@@ -1,6 +1,10 @@
 <?php
 	
 	class Extension_MemberManager extends Extension {
+	/*-------------------------------------------------------------------------
+		Definition:
+	-------------------------------------------------------------------------*/
+		
 		public function about() {
 			return array(
 				'name'			=> 'Member Manager',
