@@ -1,19 +1,19 @@
-Field: HTTP Input
+Frontend Member Manager
 -------------------------------------------------------------------------------
 
-Version: 1.003
+Version: 1.005
 Author: Rowan Lewis <rowan@pixelcarnage.com>
-Build Date: 06th January 2009
-Requirements: Symphony 2
+Build Date: 04th February 2009
+Requirements: Symphony 2.0.1
 
 
 Installation
 -------------------------------------------------------------------------------
 
-1. Upload the 'membermanager' folder in this archive to your Symphony
+1. Upload the 'frontendmembermanager' folder in this archive to your Symphony
    'extensions' folder.
 
-2. Enable it by selecting the "Member Manager" item, choose Enable from the
-   with-selected menu, then click Apply.
+2. Enable it by selecting the "Frontend Member Manager" item, choose Enable
+   from the with-selected menu, then click Apply.
 
 3. Read the documentation to setup your member driven website.

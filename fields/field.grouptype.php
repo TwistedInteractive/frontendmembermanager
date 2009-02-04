@@ -13,7 +13,7 @@
 			parent::__construct($parent);
 			
 			$this->_name = 'Group Type';
-			$this->_driver = $this->_engine->ExtensionManager->create('membermanager');
+			$this->_driver = $this->_engine->ExtensionManager->create('frontendmembermanager');
 			
 			// Set defaults:
 			$this->set('show_column', 'no');
@@ -163,7 +163,6 @@
 			$entry_id = (integer)$entry_id;
 			
 			if ($data == 'default-guests' or $data == 'default-members') {
-				$allowed = (integer)$this->get('unique_entries');
 				$taken = (integer)$this->Database->fetchVar('taken', 0, "
 					SELECT
 						COUNT(f.id) AS `taken`
@@ -174,7 +173,7 @@
 						AND f.entry_id != {$entry_id}
 				");
 				
-				if ($taken >= $allowed) {
+				if ($taken > 0) {
 					$message = "This group type can only be used on one group at a time.";
 					
 					return self::__INVALID_FIELDS__;

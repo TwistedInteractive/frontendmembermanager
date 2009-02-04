@@ -15,7 +15,7 @@
 			parent::__construct($parent);
 			
 			$this->_name = 'Member Password';
-			$this->_driver = $this->_engine->ExtensionManager->create('membermanager');
+			$this->_driver = $this->_engine->ExtensionManager->create('frontendmembermanager');
 			$this->_strengths = array(
 				array('weak', false, 'Weak'),
 				array('good', false, 'Good'),
@@ -57,6 +57,10 @@
 					KEY `length` (`length`)
 				)
 			");
+		}
+		
+		public function canFilter() {
+			return true;
 		}
 		
 	/*-------------------------------------------------------------------------
@@ -338,6 +342,51 @@
 					'value'		=> ucwords($data['strength']) . " ({$data['length']})"
 				), $link
 			);
+		}
+		
+	/*-------------------------------------------------------------------------
+		Filtering:
+	-------------------------------------------------------------------------*/
+		
+		public function buildDSRetrivalSQL($data, &$joins, &$where, $andOperation = false) {
+			$field_id = $this->get('id');
+			
+			if ($andOperation) {
+				foreach ($data as $value) {
+					$this->_key++;
+					$value = $this->encryptPassword($value);
+					$joins .= "
+						LEFT JOIN
+							`tbl_entries_data_{$field_id}` AS t{$field_id}_{$this->_key}
+							ON (e.id = t{$field_id}_{$this->_key}.entry_id)
+					";
+					$where .= "
+						AND (
+							t{$field_id}_{$this->_key}.password = '{$value}'
+						)
+					";
+				}
+				
+			} else {
+				if (!is_array($data)) $data = array($data);
+				
+				foreach ($data as &$value) {
+					$value = $this->encryptPassword($value);
+				}
+				
+				$this->_key++;
+				$data = implode("', '", $data);
+				$joins .= "
+					LEFT JOIN
+						`tbl_entries_data_{$field_id}` AS t{$field_id}_{$this->_key}
+						ON (e.id = t{$field_id}_{$this->_key}.entry_id)
+				";
+				$where .= "
+					AND t{$field_id}_{$this->_key}.password IN ('{$data}')
+				";
+			}
+			
+			return true;
 		}
 	}
 	

@@ -26,9 +26,11 @@
 					`handle` varchar(255) default NULL,
 					`value` text,
 					`value_formatted` text,
-					PRIMARY KEY (`id`),
+					PRIMARY KEY  (`id`),
 					KEY `entry_id` (`entry_id`),
-					FULLTEXT KEY `value` (`value`)
+					KEY `handle` (`handle`),
+					FULLTEXT KEY `value` (`value`),
+					FULLTEXT KEY `value_formatted` (`value_formatted`)
 				)
 			");
 		}
