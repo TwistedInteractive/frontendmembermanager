@@ -304,8 +304,9 @@
 			) {
 				$field = $this->getMemberField(FMM::FIELD_MEMBERSTATUS);
 				$data = $entry->getData($field->get('id'));
+				$data = $field->sanitizeData($data);
 				
-				return @current($data['value']);
+				return $data['value'];
 			}
 			
 			return null;
