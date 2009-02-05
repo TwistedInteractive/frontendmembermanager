@@ -22,8 +22,8 @@
 		public function about() {
 			return array(
 				'name'			=> 'Frontend Member Manager',
-				'version'		=> '1.005',
-				'release-date'	=> '2009-02-04',
+				'version'		=> '1.006',
+				'release-date'	=> '2009-02-05',
 				'author'		=> array(
 					'name'			=> 'Rowan Lewis',
 					'website'		=> 'http://pixelcarnage.com/',

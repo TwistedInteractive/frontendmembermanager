@@ -1,9 +1,9 @@
 Frontend Member Manager
 -------------------------------------------------------------------------------
 
-Version: 1.005
+Version: 1.006
 Author: Rowan Lewis <rowan@pixelcarnage.com>
-Build Date: 04th February 2009
+Build Date: 5 February 2009
 Requirements: Symphony 2.0.1
 
 
