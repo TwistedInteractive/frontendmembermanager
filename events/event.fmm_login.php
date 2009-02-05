@@ -1,7 +1,6 @@
 <?php
 	
 	class EventFMM_Login extends Event {
-		protected $driver = null;
 		protected $results = null;
 		
 		public static function about() {
@@ -23,19 +22,19 @@
 		}
 		
 		protected function __trigger() {
-			$this->driver = $this->_Parent->ExtensionManager->create('frontendmembermanager');
 			$this->result = new XMLElement('fmm-login');
+			$driver = $this->_Parent->ExtensionManager->create('frontendmembermanager');
 			$em = new EntryManager($this->_Parent);
 			$fm = new FieldManager($this->_Parent);
 			
 			// Not setup yet:
-			if (!$this->driver->initialize()) {
+			if (!$driver->initialize()) {
 				$this->setStatus('not-setup');
 				return $this->result;
 			}
 			
 			$values = @$_REQUEST['fields']; $fields = array();
-			$section = $this->driver->getSection();
+			$section = $driver->getSection();
 			$where = $joins = $group = null;
 			
 			// Get given fields:
@@ -63,25 +62,25 @@
 				return $this->result;
 			}
 			
-			$this->driver->setMember($entry);
-			$field = $this->driver->getMemberField(Extension_FrontendMemberManager::FIELD_MEMBERSTATUS);
+			$driver->setMember($entry);
+			$field = $driver->getMemberField(FMM::FIELD_MEMBERSTATUS);
 			$data = $entry->getData($field->get('id'));
 			$status = @current($data['value']);
 			
 			// The member is banned:
-			if ($status == Extension_FrontendMemberManager::STATUS_BANNED) {
+			if ($status == FMM::STATUS_BANNED) {
 				$this->setStatus('banned');
 				return $this->result;
 			}
 			
 			// The member is inactive:
-			if ($status == Extension_FrontendMemberManager::STATUS_PENDING) {
+			if ($status == FMM::STATUS_PENDING) {
 				$this->setStatus('pending');
 				return $this->result;
 			}
 			
 			$this->setStatus('success');
-			$this->driver->updateTrackingData();
+			$driver->updateTrackingData(FMM::TRACKING_LOGIN);
 			
 			return $this->result;
 		}

@@ -5,15 +5,6 @@
 	require_once(TOOLKIT . '/class.entrymanager.php');
 	
 	class Extension_FrontendMemberManager extends Extension {
-		const STATUS_PENDING = 'pending';
-		const STATUS_BANNED = 'banned';
-		const STATUS_ONLINE = 'online';
-		const STATUS_OFFLINE = 'offline';
-		
-		const FIELD_MEMBERNAME = 'membername';
-		const FIELD_MEMBERPASSWORD = 'memberpassword';
-		const FIELD_MEMBERSTATUS = 'memberstatus';
-		
 		protected $sectionManager = null;
 		protected $entryManager = null;
 		protected $section = null;
@@ -200,7 +191,7 @@
 		}
 		
 		public function cleanTrackingData() {
-			$this->_Parent->Database->fetch("
+			$this->_Parent->Database->query("
 				DELETE FROM
 					`tbl_fmm_tracking`
 				WHERE
@@ -239,24 +230,25 @@
 			");
 		}
 		
-		public function updateTrackingData() {
+		public function updateTrackingData($mode = FMM::TRACKING_NORMAL) {
 			$current_date = DateTimeObj::get('Y-m-d H:i:s');
+			$member_id = $this->getMemberId();
+			
+			if ($mode == FMM::TRACKING_LOGOUT) $member_id = 0;
 			
 			$this->_Parent->Database->query("
 				INSERT INTO
 					`tbl_fmm_tracking`
 				SET
-					`entry_id` = '{$this->getMemberId()}',
+					`entry_id` = '{$member_id}',
 					`access_id` = '{$this->getAccessId()}',
 					`client_id` = '{$this->getClientId()}',
 					`first_seen` = '{$current_date}',
 					`last_seen` = '{$current_date}'
 				ON DUPLICATE KEY UPDATE
-					`entry_id` = '{$this->getMemberId()}',
+					`entry_id` = '{$member_id}',
 					`last_seen` = '{$current_date}'
 			");
-			
-			$this->setMemberStatus(self::STATUS_ONLINE);
 		}
 		
 	/*-------------------------------------------------------------------------
@@ -305,10 +297,24 @@
 			return $this;
 		}
 		
+		public function getMemberStatus() {
+			if (
+				$entry = $this->getMember()
+				and $field = $this->getMemberField(FMM::FIELD_MEMBERSTATUS)
+			) {
+				$field = $this->getMemberField(FMM::FIELD_MEMBERSTATUS);
+				$data = $entry->getData($field->get('id'));
+				
+				return @current($data['value']);
+			}
+			
+			return null;
+		}
+		
 		public function setMemberStatus($status) {
 			if (
 				$entry = $this->getMember()
-				and $field = $this->getMemberField(self::FIELD_MEMBERSTATUS)
+				and $field = $this->getMemberField(FMM::FIELD_MEMBERSTATUS)
 			) {
 				$return = null;
 				
@@ -368,6 +374,20 @@
 			
 			return $this;
 		}
+	}
+	
+	class FMM {
+		const STATUS_PENDING = 'pending';
+		const STATUS_BANNED = 'banned';
+		const STATUS_ACTIVE = 'active';
+		
+		const FIELD_MEMBERNAME = 'membername';
+		const FIELD_MEMBERPASSWORD = 'memberpassword';
+		const FIELD_MEMBERSTATUS = 'memberstatus';
+		
+		const TRACKING_NORMAL = 'normal';
+		const TRACKING_LOGIN = 'login';
+		const TRACKING_LOGOUT = 'logout';
 	}
 	
 ?>

@@ -16,10 +16,9 @@
 			$this->_name = 'Member Status';
 			$this->_driver = $this->_engine->ExtensionManager->create('frontendmembermanager');
 			$this->_states = array(
-				//'pending'	=> array('pending', false, 'Pending'),
+				'pending'	=> array('pending', false, 'Pending'),
 				'banned'	=> array('banned', false, 'Banned'),
-				'offline'	=> array('offline', true, 'Offline'),
-				'online'	=> array('online', false, 'Online')
+				'active'	=> array('active', true, 'Active')
 			);
 			
 			// Set defaults:
@@ -34,7 +33,7 @@
 					`id` int(11) unsigned NOT NULL auto_increment,
 					`entry_id` int(11) unsigned NOT NULL,
 					`value` enum(
-						'pending', 'banned', 'offline', 'online'
+						'pending', 'banned', 'active'
 					) NOT NULL DEFAULT 'pending',
 					`date` datetime default NULL,
 					PRIMARY KEY (`id`),
@@ -43,10 +42,6 @@
 					KEY `date` (`date`)
 				)
 			");
-		}
-		
-		public function isSortable() {
-			return true;
 		}
 		
 		public function canFilter() {
@@ -69,7 +64,7 @@
 		Utilities:
 	-------------------------------------------------------------------------*/
 		
-		public function isBanned($rows) {
+		public function sanitizeData($rows) {
 			if (is_array($rows)) {
 				if (is_array($rows['value'])) {
 					$data = array(
@@ -85,7 +80,7 @@
 				$data = array();
 			}
 			
-			return @$data['value'] == 'banned';
+			return $data;
 		}
 		
 	/*-------------------------------------------------------------------------
@@ -124,21 +119,7 @@
 	-------------------------------------------------------------------------*/
 		
 		public function displayPublishPanel(&$wrapper, $rows = null, $error = null, $prefix = null, $postfix = null) {
-			if (is_array($rows)) {
-				if (is_array($rows['value'])) {
-					$data = array(
-						'value'		=> current($rows['value']),
-						'date'		=> current($rows['date'])
-					);
-					
-				} else {
-					$data = $rows;
-				}
-				
-			} else {
-				$data = array();
-			}
-			
+			$data = $this->sanitizeData($rows);
 			$label = Widget::Label($this->get('label'));
 			$name = $this->get('element_name');
 			$value = $data['value'];
@@ -222,23 +203,21 @@
 		Output:
 	-------------------------------------------------------------------------*/
 		
-		public function prepareTableValue($data, XMLElement $link = null) {
+		public function appendFormattedElement(&$wrapper, $rows, $encode = false) {
+			$data = $this->sanitizeData($rows);
+			
+			$element = new XMLElement($this->get('element_name'));
+			$element->setAttribute('handle', $this->_states[$data['value']][0]);
+			$element->setValue($this->_states[$data['value']][2]);
+			$wrapper->appendChild($element);
+		}
+		
+		public function prepareTableValue($rows, XMLElement $link = null) {
+			$data = $this->sanitizeData($rows);
+			
 			return parent::prepareTableValue(array(
 				'value'	=> @$this->_states[$data['value']][2]
 			), $link);
-		}
-		
-	/*-------------------------------------------------------------------------
-		Sorting:
-	-------------------------------------------------------------------------*/
-		
-		public function buildSortingSQL(&$joins, &$where, &$sort, $order = 'ASC') {
-			$field_id = $this->get('id');
-			$joins .= "
-				INNER JOIN `tbl_entries_data_{$field_id}` AS ed
-				ON (e.id = ed.entry_id)
-			";
-			$sort = 'ORDER BY ' . (strtolower($order) == 'random' ? 'RAND()' : "ed.value {$order}");
 		}
 		
 	/*-------------------------------------------------------------------------
