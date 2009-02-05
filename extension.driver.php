@@ -361,6 +361,8 @@
 						`tbl_fields` AS f
 					WHERE
 						f.type IN ('membername', 'memberpassword', 'memberstatus')
+					GROUP BY
+						f.parent_section
 					LIMIT 1
 				"));
 				
