@@ -135,6 +135,20 @@
 			}
 		}
 		
+		protected function rememberData($entry_id) {
+			$field_id = $this->get('id');
+			
+			return $this->_engine->Database->fetchRow(0, "
+				SELECT
+					f.password, f.strength, f.length
+				FROM
+					`tbl_entries_data_{$field_id}` AS f
+				WHERE
+					f.entry_id = '{$entry_id}'
+				LIMIT 1
+			");
+		}
+		
 	/*-------------------------------------------------------------------------
 		Settings:
 	-------------------------------------------------------------------------*/
@@ -268,59 +282,80 @@
 		
 		public function checkPostFieldData($data, &$error, $entry_id = null) {
 			$label = $this->get('label');
-			$error = null;
+			$error = null; $required = false;
 			
 			$password = trim($data['password']);
+			$optional = isset($data['optional']);
 			
 			if (isset($data['confirm'])) {
 				$confirm = trim($data['confirm']);
 			}
 			
-			if (strlen($password) == 0) {
-				$error = "'{$label}' is a required field.";
+			if ($optional and (strlen($password) != '' or strlen($confirm) != '')) {
+				$required = true;
 				
-				return self::__MISSING_FIELDS__;
+			} else if (!$optional) {
+				$required = true;
 			}
 			
-			if (isset($confirm) and $confirm != $password) {
-				$error = "'{$label}' passwords do not match.";
+			if ($required) {
+				if ($required and strlen($password) == 0) {
+					$error = "'{$label}' is a required field.";
+					
+					return self::__MISSING_FIELDS__;
+				}
 				
-				return self::__INVALID_FIELDS__;
-			}
-			
-			if (strlen($password) < (integer)$this->get('length')) {
-				$error = "'{$label}' is too short.";
+				if (isset($confirm) and $confirm != $password) {
+					$error = "'{$label}' passwords do not match.";
+					
+					return self::__INVALID_FIELDS__;
+				}
 				
-				return self::__INVALID_FIELDS__;
-			}
-			
-			if (!$this->compareStrength($this->checkPassword($password), $this->get('strength'))) {
-				$error = "'{$label}' is not strong enough.";
+				if (strlen($password) < (integer)$this->get('length')) {
+					$error = "'{$label}' is too short.";
+					
+					return self::__INVALID_FIELDS__;
+				}
 				
-				return self::__INVALID_FIELDS__;
+				if (!$this->compareStrength($this->checkPassword($password), $this->get('strength'))) {
+					$error = "'{$label}' is not strong enough.";
+					
+					return self::__INVALID_FIELDS__;
+				}
 			}
 			
 			return self::__OK__;
 		}
 		
 		public function processRawFieldData($data, &$status, $simulate = false, $entry_id = null) {
-			$status = self::__OK__;
+			$status = self::__OK__; $required = false;
 			
 			if ($data == '') return array();
 			
 			$password = trim($data['password']);
+			$optional = isset($data['optional']);
 			
 			if (isset($data['confirm'])) {
 				$confirm = trim($data['confirm']);
 			}
 			
-			$result = array(
-				'password'			=> $this->encryptPassword($password),
-				'strength'			=> $this->checkPassword($password),
-				'length'			=> strlen($password)
-			);
+			if ($optional and (strlen($password) != '' or strlen($confirm) != '')) {
+				$required = true;
+				
+			} else if (!$optional) {
+				$required = true;
+			}
 			
-			return $result;
+			if ($required) {
+				return array(
+					'password'			=> $this->encryptPassword($password),
+					'strength'			=> $this->checkPassword($password),
+					'length'			=> strlen($password)
+				);
+				
+			} else {
+				return $this->rememberData($entry_id);
+			}
 		}
 		
 	/*-------------------------------------------------------------------------
@@ -368,7 +403,12 @@
 				}
 				
 			} else {
-				if (!is_array($data)) $data = array($data);
+				if (is_array($data) and isset($data['password'])) {
+					$data = array($data['password']);
+					
+				} else if (!is_array($data)) {
+					$data = array($data);
+				}
 				
 				foreach ($data as &$value) {
 					$value = $this->encryptPassword($value);

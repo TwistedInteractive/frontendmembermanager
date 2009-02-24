@@ -19,18 +19,8 @@
 		}
 		
 		protected function __trigger() {
-			$result = new XMLElement('fmm-status');
 			$driver = $this->_Parent->ExtensionManager->create('frontendmembermanager');
-			$driver->initialize();
-			
-			if ($driver->getMemberId() and $driver->getMemberStatus() == FMM::STATUS_ACTIVE) {
-				$result->setAttribute('logged-in', 'yes');
-				
-			} else {
-				$result->setAttribute('logged-in', 'no');
-			}
-			
-			return $result;
+			return $driver->actionStatus();
 		}
 	}
 	

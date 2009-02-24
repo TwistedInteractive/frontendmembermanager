@@ -22,8 +22,8 @@
 		public function about() {
 			return array(
 				'name'			=> 'Frontend Member Manager',
-				'version'		=> '1.006',
-				'release-date'	=> '2009-02-05',
+				'version'		=> '1.007',
+				'release-date'	=> '2009-02-24',
 				'author'		=> array(
 					'name'			=> 'Rowan Lewis',
 					'website'		=> 'http://pixelcarnage.com/',
@@ -142,18 +142,20 @@
 	-------------------------------------------------------------------------*/
 		
 		public function initialize($context) {
-			if ($this->initialized) return; $this->initialized = true;
-			
-			$this->sectionManager = new SectionManager($this->_Parent);
-			$this->entryManager = new EntryManager($this->_Parent);
-			
-			// Find members section:
-			if (!$this->getSectionId()) return false;
-						
-			$this->setAccessId($_SESSION['fmm']);
-			
-			$this->updateTrackingData();
-			$this->cleanTrackingData();
+			if (!$this->initialized) {
+				$this->sectionManager = new SectionManager($this->_Parent);
+				$this->entryManager = new EntryManager($this->_Parent);
+				
+				// Find members section:
+				if (!$this->getSectionId()) return false;
+				
+				$this->setAccessId($_SESSION['fmm']);
+				
+				$this->updateTrackingData();
+				$this->cleanTrackingData();
+				
+				$this->initialized = true;
+			}
 			
 			return true;
 		}
@@ -376,6 +378,117 @@
 			$this->sectionId = (integer)$section_id;
 			
 			return $this;
+		}
+		
+	/*-------------------------------------------------------------------------
+		Actions:
+	-------------------------------------------------------------------------*/
+		
+		public function actionLogin($values) {
+			$result = new XMLElement('fmm-login');
+			$em = new EntryManager($this->_Parent);
+			$fm = new FieldManager($this->_Parent);
+			
+			// Not setup yet:
+			if (!$this->initialize()) {
+				$result->setAttribute('status', 'not-setup');
+				
+				return $result;
+			}
+			
+			$fields = array();
+			$section = $this->getSection();
+			$where = $joins = $group = null;
+			
+			header('content-type: text/plain');
+			
+			// Get given fields:
+			foreach ($values as $key => $value) {
+				$field_id = $fm->fetchFieldIDFromElementName($key, $this->getSectionId());
+				
+				if (!is_null($field_id)) {
+					$field = $fm->fetch($field_id, $this->getSectionId());
+					
+					if (
+						$field instanceof FieldMemberName
+						or $field instanceof FieldMemberPassword
+					) {
+						$fields[] = $field;
+						
+						$field->buildDSRetrivalSQL($value, $joins, $where);
+						
+						if (!$group) $group = $field->requiresSQLGrouping();
+					}
+				}
+			}
+			
+			// Find matching entries:
+			$entries = $em->fetch(
+				null, $this->getSectionId(), 1, null,
+				$where, $joins, $group, true
+			);
+			
+			// Invalid credentials, woot!
+			if (!$entry = @current($entries)) {
+				$result->setAttribute('status', 'failed');
+				
+				return $result;
+			}
+			
+			$this->setMember($entry);
+			$field = $this->getMemberField(FMM::FIELD_MEMBERSTATUS);
+			$data = $entry->getData($field->get('id'));
+			$status = @current($data['value']);
+			
+			// The member is banned:
+			if ($status == FMM::STATUS_BANNED) {
+				$result->setAttribute('status', 'banned');
+				
+				return $result;
+			}
+			
+			// The member is inactive:
+			if ($status == FMM::STATUS_PENDING) {
+				$result->setAttribute('status', 'pending');
+				
+				return $result;
+			}
+			
+			$result->setAttribute('status', 'success');
+			
+			$this->updateTrackingData(FMM::TRACKING_LOGIN);
+			
+			return $result;
+		}
+		
+		public function actionLogout() {
+			$result = new XMLElement('fmm-logout');
+			
+			$this->updateTrackingData(FMM::TRACKING_LOGOUT);
+			
+			$result->setAttribute('status', 'success');
+			
+			return $result;
+		}
+		
+		public function actionStatus() {
+			$result = new XMLElement('fmm-status');
+			
+			// Not setup yet:
+			if (!$this->initialize()) {
+				$result->setAttribute('status', 'not-setup');
+				
+				return $result;
+			}
+			
+			if ($this->getMemberId() and $this->getMemberStatus() == FMM::STATUS_ACTIVE) {
+				$result->setAttribute('logged-in', 'yes');
+				
+			} else {
+				$result->setAttribute('logged-in', 'no');
+			}
+			
+			return $result;
 		}
 	}
 	

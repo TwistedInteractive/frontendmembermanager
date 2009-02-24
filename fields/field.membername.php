@@ -156,6 +156,8 @@
 		public function checkPostFieldData($data, &$error, $entry_id = null) {
 			$error = null; $label = $this->get('label');
 			
+			$field_id = $this->get('id');
+			
 			if (strlen(trim($data)) == 0) {
 				$error = "'{$label}' is a required field.";
 				
@@ -168,6 +170,23 @@
 				return self::__INVALID_FIELDS__;	
 			}
 			
+			$result = $this->_engine->Database->query("
+				SELECT
+					f.id
+				FROM
+					`tbl_entries_data_{$field_id}` AS f
+				WHERE
+					f.value = '{$data}'
+					AND f.entry_id != '{$entry_id}'
+				LIMIT 1
+			");
+			
+			if ($this->_engine->Database->numOfRows() > 0) {
+				$error = "'{$label}' is already in use by another member.";
+				
+				return self::__INVALID_FIELDS__;	
+			}
+
 			return self::__OK__;
 		}
 		

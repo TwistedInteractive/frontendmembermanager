@@ -19,11 +19,8 @@
 		}
 		
 		protected function __trigger() {
-			$result = new XMLElement('fmm-status');
 			$driver = $this->_Parent->ExtensionManager->create('frontendmembermanager');
-			$driver->initialize();
-			
-			$driver->updateTrackingData(FMM::TRACKING_LOGOUT);
+			return $driver->actionLogout();
 		}
 	}
 	

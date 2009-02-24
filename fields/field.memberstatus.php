@@ -148,22 +148,10 @@
 			$field_id = $this->get('id');
 			$entry_id = (integer)$entry_id;
 			
-			if ($data == 'default-guests' or $data == 'default-members') {
-				$taken = (integer)$this->Database->fetchVar('taken', 0, "
-					SELECT
-						COUNT(f.id) AS `taken`
-					FROM
-						`tbl_entries_data_{$field_id}` AS f
-					WHERE
-						f.value = '{$data}'
-						AND f.entry_id != {$entry_id}
-				");
+			if (!in_array($data, array_keys($this->_states)) and !empty($data)) {
+				$message = "Invalid status given.";
 				
-				if ($taken > 0) {
-					$message = "This group type can only be used on one group at a time.";
-					
-					return self::__INVALID_FIELDS__;
-				}
+				return self::__INVALID_FIELDS__;
 			}
 			
 			return parent::checkPostFieldData($data, $message, $entry_id);
@@ -185,6 +173,8 @@
 					f.date DESC
 				LIMIT 4
 			");
+			
+			if (empty($current)) $data = FMM::STATUS_ACTIVE;
 			
 			$values = array(
 				'value'		=> array($data),
