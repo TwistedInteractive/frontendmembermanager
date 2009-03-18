@@ -89,26 +89,8 @@
 			return false;
 		}
 		
-		protected function encryptPassword($password) {
-		    return trim(base64_encode(
-				mcrypt_encrypt(
-					MCRYPT_RIJNDAEL_256, $this->get('salt'),
-					$password, MCRYPT_MODE_ECB,
-					mcrypt_create_iv(mcrypt_get_iv_size(
-						MCRYPT_RIJNDAEL_256, MCRYPT_MODE_ECB
-					), MCRYPT_RAND)
-				)
-			));
-		}
-
-		protected function decryptPassword($password) {
-		    return trim(mcrypt_decrypt(
-				MCRYPT_RIJNDAEL_256, $this->get('salt'),
-				base64_decode($password), MCRYPT_MODE_ECB,
-				mcrypt_create_iv(mcrypt_get_iv_size(
-					MCRYPT_RIJNDAEL_256, MCRYPT_MODE_ECB
-				), MCRYPT_RAND)
-			));
+		protected function encodePassword($password) {
+			return md5($this->get('salt') . $password);
 		}
 		
 		protected function getStrengthName($strength) {
@@ -257,22 +239,78 @@
 		Publish:
 	-------------------------------------------------------------------------*/
 		
-		public function displayPublishPanel(&$wrapper, $data = null, $error = null, $prefix = null, $postfix = null) {
-			$label = Widget::Label($this->get('label'));
-			$name = $this->get('element_name');
+		public function displayPublishPanel(&$wrapper, $data = null, $error = null, $prefix = null, $postfix = null, $entry_id = null) {
+			$this->_engine->Page->addStylesheetToHead(URL . '/extensions/frontendmembermanager/assets/publish.css', 'screen', 8251840);
 			
-			$input = Widget::Input(
-				"fields{$prefix}[$name][password]{$postfix}",
-				(!empty($data['password']) ? General::sanitize($this->decryptPassword($data['password'])) : null)
-			);
-			$input->setAttribute('type', 'password');
+			$field_id = $this->get('id');
+			$handle = $this->get('element_name');
+			$password_set = $this->Database->fetchVar('id', 0, "
+				SELECT
+					f.id
+				FROM
+					`tbl_entries_data_{$field_id}` AS f
+				WHERE
+					f.entry_id = '{$entry_id}'
+				LIMIT 1
+			");
 			
-			$label->appendChild($input);
+			$label = new XMLElement('div', $this->get('label'));
+			$label->setAttribute('class', 'label');
+			
+			$container = new XMLElement('div');
+			$container->setAttribute('class', 'container');
+			
+			$group = new XMLElement('div');
+			$group->setAttribute('class', 'group');
+			
+			// Change password:
+			if ($password_set) {
+				$this->displayPublishPassword(
+					$group, 'New Password', "{$prefix}[{$handle}][password]{$postfix}"
+				);
+				$this->displayPublishPassword(
+					$group, 'Confirm New Password', "{$prefix}[{$handle}][confirm]{$postfix}"
+				);
+				
+				$group->appendChild(Widget::Input(
+					"fields{$prefix}[{$handle}][optional]{$postfix}", 'yes', 'hidden'
+				));
+				
+				$container->appendChild($group);
+				
+				$help = new XMLElement('p');
+				$help->setAttribute('class', 'help');
+				$help->setValue(__('Leave new password field blank to keep the current password'));
+				
+				$container->appendChild($help);
+				
+			// Create password:
+			} else {
+				$this->displayPublishPassword(
+					$group, 'Password', "{$prefix}[{$handle}][password]{$postfix}"
+				);
+				$this->displayPublishPassword(
+					$group, 'Confirm Password', "{$prefix}[{$handle}][confirm]{$postfix}"
+				);
+				
+				$container->appendChild($group);
+			}
+			
+			$label->appendChild($container);
 			
 			if ($error != null) {
 				$label = Widget::wrapFormElementWithError($label, $error);
 			}
 			
+			$wrapper->appendChild($label);
+		}
+		
+		public function displayPublishPassword($wrapper, $title, $name) {
+			$label = Widget::Label(__($title));
+			$input = Widget::Input("fields{$name}");
+			$input->setAttribute('type', 'password');
+			
+			$label->appendChild($input);
 			$wrapper->appendChild($label);
 		}
 		
@@ -299,7 +337,7 @@
 			}
 			
 			if ($required) {
-				if ($required and strlen($password) == 0) {
+				if (strlen($password) == 0) {
 					$error = "'{$label}' is a required field.";
 					
 					return self::__MISSING_FIELDS__;
@@ -348,7 +386,7 @@
 			
 			if ($required) {
 				return array(
-					'password'			=> $this->encryptPassword($password),
+					'password'			=> $this->encodePassword($password),
 					'strength'			=> $this->checkPassword($password),
 					'length'			=> strlen($password)
 				);
@@ -389,7 +427,7 @@
 			if ($andOperation) {
 				foreach ($data as $value) {
 					$this->_key++;
-					$value = $this->encryptPassword($value);
+					$value = $this->encodePassword($value);
 					$joins .= "
 						LEFT JOIN
 							`tbl_entries_data_{$field_id}` AS t{$field_id}_{$this->_key}
@@ -411,7 +449,7 @@
 				}
 				
 				foreach ($data as &$value) {
-					$value = $this->encryptPassword($value);
+					$value = $this->encodePassword($value);
 				}
 				
 				$this->_key++;
