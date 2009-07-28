@@ -206,7 +206,7 @@
 		Actions:
 	-------------------------------------------------------------------------*/
 		
-		public function actionLogin($values) {
+		public function actionLogin($values,$redirect = null) {
 			$result = new XMLElement('fmm-login');
 			$section = @$values['section'];
 			
@@ -222,8 +222,8 @@
 			
 			foreach ($this->sessions as $session)
 			if ($section and $session->handle == $section) {
-				$session->actionLogin($result, $values);
-			}
+				$session->actionLogin($result, $values, $redirect);				
+			}			
 			
 			return $result;
 		}
@@ -488,7 +488,7 @@
 		Actions:
 	-------------------------------------------------------------------------*/
 		
-		public function actionLogin($parent, $values) {
+		public function actionLogin($parent, $values, $redirect) {
 			$em = new EntryManager($this->parent);
 			$fm = new FieldManager($this->parent);
 			
@@ -574,6 +574,8 @@
 			$result->setAttribute('status', 'success');
 			
 			$this->updateTrackingData(FMM::TRACKING_LOGIN);
+			
+			if($redirect != null) redirect($redirect);
 			
 			return true;
 		}
