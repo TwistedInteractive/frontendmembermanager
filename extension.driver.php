@@ -206,7 +206,7 @@
 		Actions:
 	-------------------------------------------------------------------------*/
 		
-		public function actionLogin($values) {
+		public function actionLogin($values,$redirect = null) {
 			$result = new XMLElement('fmm-login');
 			$section = @$values['section'];
 			
@@ -222,8 +222,8 @@
 			
 			foreach ($this->sessions as $session)
 			if ($section and $session->handle == $section) {
-				$session->actionLogin($result, $values);
-			}
+				$session->actionLogin($result, $values, $redirect);				
+			}			
 			
 			return $result;
 		}
@@ -488,13 +488,14 @@
 		Actions:
 	-------------------------------------------------------------------------*/
 		
-		public function actionLogin($parent, $values) {
+		public function actionLogin($parent, $values, $redirect) {
 			$em = new EntryManager($this->parent);
 			$fm = new FieldManager($this->parent);
 			
 			$fields = array();
 			$section = $this->section;
 			$where = $joins = $group = null;
+			$name_where = $name_joins = $name_group = null;
 			
 			$result = new XMLElement('section');
 			$result->setAttribute('handle', $this->handle);
@@ -516,6 +517,12 @@
 						$field->buildDSRetrivalSQL($value, $joins, $where);
 						
 						if (!$group) $group = $field->requiresSQLGrouping();
+						
+						//Build SQL for determining of the username or the password was incorrrect. Only executed if login fails
+						if ($field instanceof FieldMemberName) {
+							$field->buildDSRetrivalSQL($value, $name_joins, $name_where);
+							if (!$name_group) $name_group = $field->requiresSQLGrouping();
+						}
 					}
 				}
 			}
@@ -529,6 +536,18 @@
 			// Invalid credentials, woot!
 			if (!$entry = @current($entries)) {
 				$result->setAttribute('status', 'failed');
+				
+				//determine reason for login failure. This should not normally be shown to the user as it can lead to account cracking attempts.
+				$name_entries = $em->fetch(
+					null, $this->section->get('id'), 1, null,
+					$name_where, $name_joins, $name_group, true
+				);
+
+				if ($name_entry = @current($name_entries)) {
+					$result->setAttribute('reason', 'incorrect-password');
+				} else {
+					$result->setAttribute('reason', 'incorrect-username');
+				}
 				
 				return false;
 			}
@@ -555,6 +574,8 @@
 			$result->setAttribute('status', 'success');
 			
 			$this->updateTrackingData(FMM::TRACKING_LOGIN);
+			
+			if($redirect != null) redirect($redirect);
 			
 			return true;
 		}
