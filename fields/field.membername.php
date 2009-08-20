@@ -241,8 +241,11 @@
 		public function buildDSRetrivalSQL($data, &$joins, &$where, $andOperation = false) {
 			$field_id = $this->get('id');
 			
-			if (preg_match('/^regexp:(.*)/i', $data[0], $matches)) {
-				$data = $this->cleanValue($matches[1]);
+			if (preg_match('/^(not-)?regexp:\s*/', $data[0], $matches)) {
+				$data = trim(array_pop(explode(':', $data[0], 2)));
+				$negate = ($matches[1] == '' ? '' : 'NOT');
+				
+				$data = $this->cleanValue($data);
 				$this->_key++;
 				$joins .= "
 					LEFT JOIN
@@ -250,14 +253,35 @@
 						ON (e.id = t{$field_id}_{$this->_key}.entry_id)
 				";
 				$where .= "
-					AND (
-						t{$field_id}_{$this->_key}.value REGEXP '{$data}'
-						OR t{$field_id}_{$this->_key}.handle REGEXP '{$data}'
+					AND {$negate}(
+						t{$field_id}_{$this->_key}.handle REGEXP '{$data}'
+						OR t{$field_id}_{$this->_key}.value REGEXP '{$data}'
 					)
 				";
+			}
+			
+			else if (preg_match('/^(not-)?(boolean|partial):\s*/', $data[0], $matches)) {
+				$data = trim(array_pop(explode(':', implode(' + ', $data), 2)));
+				$negate = ($matches[1] == '' ? '' : 'NOT');
 				
-			} elseif (preg_match('/^partial:(.*)/i', $data[0], $matches)) {
-				$data = $this->cleanValue($matches[1]);
+				if ($data == '') return true;
+				
+				// Negative match?
+				if (preg_match('/^not(\W)/i', $data)) {
+					$mode = '-';
+					
+				} else {
+					$mode = '+';
+				}
+				
+				// Replace ' and ' with ' +':
+				$data = preg_replace('/(\W)and(\W)/i', '\\1+\\2', $data);
+				$data = preg_replace('/(^)and(\W)|(\W)and($)/i', '\\2\\3', $data);
+				$data = preg_replace('/(\W)not(\W)/i', '\\1-\\2', $data);
+				$data = preg_replace('/(^)not(\W)|(\W)not($)/i', '\\2\\3', $data);
+				$data = preg_replace('/([\+\-])\s*/', '\\1', $mode . $data);
+				
+				$data = $this->cleanValue($data);
 				$this->_key++;
 				$joins .= "
 					LEFT JOIN
@@ -265,10 +289,34 @@
 						ON (e.id = t{$field_id}_{$this->_key}.entry_id)
 				";
 				$where .= "
-					AND MATCH (t{$field_id}_{$this->_key}.value) AGAINST ('{$data}' IN BOOLEAN MODE)
+					AND {$negate}(MATCH (t{$field_id}_{$this->_key}.value) AGAINST ('{$data}' IN BOOLEAN MODE))
 				";
+			}
+			
+			else if (preg_match('/^(not-)?((starts|ends)-with|contains):\s*/', $data[0], $matches)) {
+				$data = trim(array_pop(explode(':', $data[0], 2)));
+				$negate = ($matches[1] == '' ? '' : 'NOT');
+				$data = $this->cleanValue($data);
 				
-			} elseif ($andOperation) {
+				if ($matches[2] == 'ends-with') $data = "%{$data}";
+				if ($matches[2] == 'starts-with') $data = "{$data}%";
+				if ($matches[2] == 'contains') $data = "%{$data}%";
+				
+				$this->_key++;
+				$joins .= "
+					LEFT JOIN
+						`tbl_entries_data_{$field_id}` AS t{$field_id}_{$this->_key}
+						ON (e.id = t{$field_id}_{$this->_key}.entry_id)
+				";
+				$where .= "
+					AND {$negate}(
+						t{$field_id}_{$this->_key}.handle LIKE '{$data}'
+						OR t{$field_id}_{$this->_key}.value LIKE '{$data}'
+					)
+				";
+			}
+			
+			elseif ($andOperation) {
 				foreach ($data as $value) {
 					$this->_key++;
 					$value = $this->cleanValue($value);
@@ -284,8 +332,9 @@
 						)
 					";
 				}
-				
-			} else {
+			}
+			
+			else {
 				if (!is_array($data)) $data = array($data);
 				
 				foreach ($data as &$value) {
