@@ -27,10 +27,7 @@
 		}
 		
 		public function uninstall() {
-			$this->_Parent->Database->query("DROP TABLE `tbl_fields_groupname`");
-			$this->_Parent->Database->query("DROP TABLE `tbl_fields_grouptype`");
-			$this->_Parent->Database->query("DROP TABLE `tbl_fields_membergroup`");
-			$this->_Parent->Database->query("DROP TABLE `tbl_fields_membername`");
+			$this->_Parent->Database->query("DROP TABLE `tbl_fields_memberemail`");
 			$this->_Parent->Database->query("DROP TABLE `tbl_fields_memberpassword`");
 			$this->_Parent->Database->query("DROP TABLE `tbl_fields_memberstatus`");
 			$this->_Parent->Database->query("DROP TABLE `tbl_fmm_codes`");
@@ -39,48 +36,10 @@
 		
 		public function install() {
 			$this->_Parent->Database->query("
-				CREATE TABLE IF NOT EXISTS `tbl_fields_groupname` (
+				CREATE TABLE IF NOT EXISTS `tbl_fields_memberemail` (
 					`id` int(11) unsigned NOT NULL auto_increment,
 					`field_id` int(11) unsigned NOT NULL,
 					`formatter` varchar(255) default NULL,
-					`validator` varchar(255) default NULL,
-					PRIMARY KEY (`id`),
-					KEY `field_id` (`field_id`)
-				)
-			");
-			
-			$this->_Parent->Database->query("
-				CREATE TABLE IF NOT EXISTS `tbl_fields_grouppermissions` (
-					`id` INT(11) UNSIGNED NOT NULL auto_increment,
-					`field_id` INT(11) UNSIGNED NOT NULL,
-					`create` ENUM('yes', 'no') DEFAULT 'no',
-					`update` ENUM('yes', 'no') DEFAULT 'no',
-					`update_own` ENUM('yes', 'no') DEFAULT 'no',
-					`delete` ENUM('yes', 'no') DEFAULT 'no',
-					`delete_own` ENUM('yes', 'no') DEFAULT 'no',
-					PRIMARY KEY (`id`),
-					KEY `field_id` (`field_id`)
-				)
-			");
-			
-			$this->_Parent->Database->query("
-				CREATE TABLE IF NOT EXISTS `tbl_fields_membergroup` (
-					`id` int(11) unsigned NOT NULL auto_increment,
-					`field_id` int(11) unsigned NOT NULL,
-					`parent_section_id` int(11) unsigned default NULL,
-					`parent_field_id` int(11) unsigned default NULL,
-					PRIMARY KEY (`id`),
-					KEY `parent_section_id` (`parent_section_id`),
-					KEY `parent_field_id` (`parent_field_id`)
-				)
-			");
-			
-			$this->_Parent->Database->query("
-				CREATE TABLE IF NOT EXISTS `tbl_fields_membername` (
-					`id` int(11) unsigned NOT NULL auto_increment,
-					`field_id` int(11) unsigned NOT NULL,
-					`formatter` varchar(255) default NULL,
-					`validator` varchar(255) default NULL,
 					PRIMARY KEY (`id`),
 					KEY `field_id` (`field_id`)
 				)
@@ -103,6 +62,14 @@
 					`id` int(11) unsigned NOT NULL auto_increment,
 					`field_id` int(11) unsigned NOT NULL,
 					PRIMARY KEY (`id`)
+				)
+			");
+			
+			$this->_Parent->Database->query("
+				CREATE TABLE IF NOT EXISTS `tbl_fmm_codes` (
+					`entry_id` int(11) NOT NULL default '0',
+					`code` varchar(32) default NULL,
+					PRIMARY KEY  (`entry_id`)
 				)
 			");
 			
@@ -175,7 +142,7 @@
 							WHERE
 								f.parent_section = s.id
 								AND f.type IN (
-									'membername',
+									'memberemail',
 									'memberpassword',
 									'memberstatus'
 								)
@@ -310,7 +277,7 @@
 		const STATUS_BANNED = 'banned';
 		const STATUS_ACTIVE = 'active';
 		
-		const FIELD_MEMBERNAME = 'membername';
+		const FIELD_MEMBEREMAIL = 'memberemail';
 		const FIELD_MEMBERPASSWORD = 'memberpassword';
 		const FIELD_MEMBERSTATUS = 'memberstatus';
 		
@@ -549,7 +516,7 @@
 				if (!is_null($field_id)) {
 					$field = $fm->fetch($field_id, $this->section->get('id'));
 					
-					if ($field instanceof FieldMemberName) {
+					if ($field instanceof FieldMemberEmail) {
 						$field->buildDSRetrivalSQL($value, $joins, $where);
 					}
 				}
@@ -569,7 +536,7 @@
 			
 			if ($status != FMM::STATUS_ACTIVE) return false;
 			
-			$field = $this->getMemberField(FMM::FIELD_MEMBERNAME);
+			$field = $this->getMemberField(FMM::FIELD_MEMBEREMAIL);
 			$data = $entry->getData($field->get('id'));
 			$code = md5(time() . $entry->get('id') . $data['value']);
 			
@@ -617,7 +584,7 @@
 					$field = $fm->fetch($field_id, $this->section->get('id'));
 					
 					if (
-						$field instanceof FieldMemberName
+						$field instanceof FieldMemberEmail
 						or $field instanceof FieldMemberPassword
 					) {
 						$field->buildDSRetrivalSQL($value, $joins, $where);
@@ -626,7 +593,7 @@
 						
 						// Build SQL for determining of the username or the password was
 						// incorrrect. Only executed if login fails
-						if ($field instanceof FieldMemberName) {
+						if ($field instanceof FieldMemberEmail) {
 							$field->buildDSRetrivalSQL($value, $name_joins, $name_where);
 							if (!$name_group) $name_group = $field->requiresSQLGrouping();
 						}
