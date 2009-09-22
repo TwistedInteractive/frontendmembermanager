@@ -2,7 +2,7 @@
 	
 	if (!defined('__IN_SYMPHONY__')) die('<h2>Symphony Error</h2><p>You cannot directly access this file</p>');
 	
-	class FieldMemberName extends Field {
+	class FieldMemberEmail extends Field {
 	/*-------------------------------------------------------------------------
 		Definition:
 	-------------------------------------------------------------------------*/
@@ -67,11 +67,7 @@
 			$wrapper->appendChild($this->buildSummaryBlock($errors));	
 			
 			$group = new XMLElement('div', null, array('class' => 'group'));
-			$div = new XMLElement('div');
 			
-			$this->buildValidationSelect($div, $this->get('validator'), "fields[{$order}][validator]");
-			
-			$group->appendChild($div);
 			$group->appendChild(
 				$this->buildFormatterSelect($this->get('formatter'),
 				"fields[{$order}][formatter]", 'Text Formatter')
@@ -95,13 +91,13 @@
 			
 			$this->_engine->Database->query("
 				DELETE FROM
-					`tbl_fields_membername`
+					`tbl_fields_memberemail`
 				WHERE
 					`field_id` = '$field_id'
 				LIMIT 1
 			");
 			
-			return $this->_engine->Database->insert($fields, 'tbl_fields_membername');
+			return $this->_engine->Database->insert($fields, 'tbl_fields_memberemail');
 		}
 		
 	/*-------------------------------------------------------------------------
@@ -148,7 +144,7 @@
 		}
 		
 		public function validateRule($data) {			
-			$rule = $this->get('validator');
+			$rule = '/^\w(?:\.?[\w%+-]+)*@\w(?:[\w-]*\.)+?[a-z]{2,}$/i';
 			
 			return ($rule ? General::validateString($data, $rule) : true);
 		}

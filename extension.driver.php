@@ -15,8 +15,8 @@
 		public function about() {
 			return array(
 				'name'			=> 'Frontend Member Manager',
-				'version'		=> '1.008',
-				'release-date'	=> '2009-03-18',
+				'version'		=> '1.0.11',
+				'release-date'	=> '2009-09-2',
 				'author'		=> array(
 					'name'			=> 'Rowan Lewis',
 					'website'		=> 'http://pixelcarnage.com/',
@@ -33,6 +33,7 @@
 			$this->_Parent->Database->query("DROP TABLE `tbl_fields_membername`");
 			$this->_Parent->Database->query("DROP TABLE `tbl_fields_memberpassword`");
 			$this->_Parent->Database->query("DROP TABLE `tbl_fields_memberstatus`");
+			$this->_Parent->Database->query("DROP TABLE `tbl_fmm_codes`");
 			$this->_Parent->Database->query("DROP TABLE `tbl_fmm_tracking`");
 		}
 		
@@ -206,7 +207,51 @@
 		Actions:
 	-------------------------------------------------------------------------*/
 		
-		public function actionLogin($values,$redirect = null) {
+		public function actionRequestCode($values, $redirect = null) {
+			$result = new XMLElement('fmm-request-code');
+			$section = @$values['section'];
+			
+			// Not setup yet:
+			if (!$this->initialize()) {
+				$result->setAttribute('status', 'not-setup');
+				
+				return $result;
+			}
+			
+			else {
+				$result->setAttribute('status', 'ok');
+			}
+			
+			foreach ($this->sessions as $session) if ($section and $session->handle == $section) {
+				$session->actionRequestCode($result, $values, $redirect);				
+			}			
+			
+			return $result;
+		}
+		
+		public function actionCheckCode($values, $redirect = null) {
+			$result = new XMLElement('fmm-check-code');
+			$section = @$values['section'];
+			
+			// Not setup yet:
+			if (!$this->initialize()) {
+				$result->setAttribute('status', 'not-setup');
+				
+				return $result;
+			}
+			
+			else {
+				$result->setAttribute('status', 'ok');
+			}
+			
+			foreach ($this->sessions as $session) if ($section and $session->handle == $section) {
+				$session->actionCheckCode($result, $values, $redirect);				
+			}			
+			
+			return $result;
+		}
+		
+		public function actionLogin($values, $redirect = null) {
 			$result = new XMLElement('fmm-login');
 			$section = @$values['section'];
 			
@@ -215,13 +260,13 @@
 				$result->setAttribute('status', 'not-setup');
 				
 				return $result;
-				
-			} else {
+			}
+			
+			else {
 				$result->setAttribute('status', 'ok');
 			}
 			
-			foreach ($this->sessions as $session)
-			if ($section and $session->handle == $section) {
+			foreach ($this->sessions as $session) if ($section and $session->handle == $section) {
 				$session->actionLogin($result, $values, $redirect);				
 			}			
 			
@@ -235,10 +280,6 @@
 				$session->actionLogout($result);
 			}
 			
-			//$this->updateTrackingData(FMM::TRACKING_LOGOUT);
-			
-			//$result->setAttribute('status', 'success');
-			
 			return $result;
 		}
 		
@@ -250,8 +291,9 @@
 				$result->setAttribute('status', 'not-setup');
 				
 				return $result;
-				
-			} else {
+			}
+			
+			else {
 				$result->setAttribute('status', 'ok');
 			}
 			
@@ -488,11 +530,77 @@
 		Actions:
 	-------------------------------------------------------------------------*/
 		
+		public function actionRequestCode($parent, $values, $redirect) {
+			$em = new EntryManager($this->parent);
+			$fm = new FieldManager($this->parent);
+			
+			$section = $this->section;
+			$where = $joins = $group = null;
+			$name_where = $name_joins = $name_group = null;
+			
+			$result = new XMLElement('section');
+			$result->setAttribute('handle', $this->handle);
+			$parent->appendChild($result);
+			
+			// Get given fields:
+			foreach ($values as $key => $value) {
+				$field_id = $fm->fetchFieldIDFromElementName($key, $this->section->get('id'));
+				
+				if (!is_null($field_id)) {
+					$field = $fm->fetch($field_id, $this->section->get('id'));
+					
+					if ($field instanceof FieldMemberName) {
+						$field->buildDSRetrivalSQL($value, $joins, $where);
+					}
+				}
+			}
+			
+			// Find matching entries:
+			$entries = $em->fetch(
+				null, $this->section->get('id'), 1, null,
+				$where, $joins, $group, true
+			);
+			
+			if (!$entry = @current($entries)) return false;
+			
+			$field = $this->getMemberField(FMM::FIELD_MEMBERSTATUS);
+			$data = $entry->getData($field->get('id'));
+			$status = @current($data['value']);
+			
+			if ($status != FMM::STATUS_ACTIVE) return false;
+			
+			$field = $this->getMemberField(FMM::FIELD_MEMBERNAME);
+			$data = $entry->getData($field->get('id'));
+			$code = md5(time() . $entry->get('id') . $data['value']);
+			
+			$this->database->query(sprintf(
+				"
+					INSERT INTO
+						`tbl_fmm_codes`
+					SET
+						`entry_id` = '%s',
+						`code` = '%s'
+					ON DUPLICATE KEY UPDATE
+						`entry_id` = '%s',
+						`code` = '%s'
+				",
+				$entry->get('id'), $code,
+				$entry->get('id'), $code
+			));
+			
+			$result->setAttribute('code', $code);
+			
+			// TODO: Add emailtemplatefilter integration.
+		}
+		
+		public function actionCheckCode($parent, $values, $redirect) {
+			
+		}
+		
 		public function actionLogin($parent, $values, $redirect) {
 			$em = new EntryManager($this->parent);
 			$fm = new FieldManager($this->parent);
 			
-			$fields = array();
 			$section = $this->section;
 			$where = $joins = $group = null;
 			$name_where = $name_joins = $name_group = null;
@@ -512,13 +620,12 @@
 						$field instanceof FieldMemberName
 						or $field instanceof FieldMemberPassword
 					) {
-						$fields[] = $field;
-						
 						$field->buildDSRetrivalSQL($value, $joins, $where);
 						
 						if (!$group) $group = $field->requiresSQLGrouping();
 						
-						//Build SQL for determining of the username or the password was incorrrect. Only executed if login fails
+						// Build SQL for determining of the username or the password was
+						// incorrrect. Only executed if login fails
 						if ($field instanceof FieldMemberName) {
 							$field->buildDSRetrivalSQL($value, $name_joins, $name_where);
 							if (!$name_group) $name_group = $field->requiresSQLGrouping();
@@ -537,15 +644,17 @@
 			if (!$entry = @current($entries)) {
 				$result->setAttribute('status', 'failed');
 				
-				//determine reason for login failure. This should not normally be shown to the user as it can lead to account cracking attempts.
+				// Determine reason for login failure.
 				$name_entries = $em->fetch(
 					null, $this->section->get('id'), 1, null,
 					$name_where, $name_joins, $name_group, true
 				);
-
+				
 				if ($name_entry = @current($name_entries)) {
 					$result->setAttribute('reason', 'incorrect-password');
-				} else {
+				}
+				
+				else {
 					$result->setAttribute('reason', 'incorrect-username');
 				}
 				
@@ -575,7 +684,7 @@
 			
 			$this->updateTrackingData(FMM::TRACKING_LOGIN);
 			
-			if($redirect != null) redirect($redirect);
+			if (!is_null($redirect)) redirect($redirect);
 			
 			return true;
 		}
@@ -597,8 +706,9 @@
 			
 			if ($this->getMemberId() and $this->getMemberStatus() == FMM::STATUS_ACTIVE) {
 				$result->setAttribute('logged-in', 'yes');
-				
-			} else {
+			}
+			
+			else {
 				$result->setAttribute('logged-in', 'no');
 			}
 			
