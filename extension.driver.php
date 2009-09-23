@@ -30,7 +30,6 @@
 			$this->_Parent->Database->query("DROP TABLE `tbl_fields_memberemail`");
 			$this->_Parent->Database->query("DROP TABLE `tbl_fields_memberpassword`");
 			$this->_Parent->Database->query("DROP TABLE `tbl_fields_memberstatus`");
-			$this->_Parent->Database->query("DROP TABLE `tbl_fmm_recovery_codes`");
 			$this->_Parent->Database->query("DROP TABLE `tbl_fmm_tracking`");
 		}
 		
@@ -62,14 +61,6 @@
 					`id` int(11) unsigned NOT NULL auto_increment,
 					`field_id` int(11) unsigned NOT NULL,
 					PRIMARY KEY (`id`)
-				)
-			");
-			
-			$this->_Parent->Database->query("
-				CREATE TABLE IF NOT EXISTS `tbl_fmm_recovery_codes` (
-					`entry_id` int(11) NOT NULL,
-					`code` varchar(32) NOT NULL,
-					PRIMARY KEY  (`entry_id`)
 				)
 			");
 			
@@ -594,41 +585,37 @@
 				return false;
 			}
 			
-			$field = $this->getMemberField(FMM::FIELD_MEMBEREMAIL);
-			$data = $entry->getData($field->get('id'));
-			$code = md5(time() . $entry->get('id') . $data['value']);
+			$email_field = $this->getMemberField(FMM::FIELD_MEMBEREMAIL);
+			$email_data = $entry->getData($email_field->get('id'));
+			$password_field = $this->getMemberField(FMM::FIELD_MEMBERPASSWORD);
+			$password_data = $entry->getData($password_field->get('id'));
 			
-			$this->database->query(sprintf(
-				"
-					INSERT INTO
-						`tbl_fmm_recovery_codes`
-					SET
-						`entry_id` = '%s',
-						`code` = '%s'
-					ON DUPLICATE KEY UPDATE
-						`entry_id` = '%s',
-						`code` = '%s'
-				",
-				$entry->get('id'), $code,
-				$entry->get('id'), $code
-			));
+			// Save new recovery code:
+			$password_data['recovery_code'] = md5(
+				time() . $entry->get('id') . $email_data['value']
+			);
 			
-			$result->setAttribute('code', $code);
+			$entry->setData($password_field->get('id'), $password_data);
+			$entry->commit();
 			
-			// TODO: Add emailtemplatefilter integration.
-			
+			// Send recovery email:
 			$driver = Frontend::Page()->ExtensionManager->create('emailtemplatefilter');
 			$template_id = Symphony::Configuration()->get(
 				'recovery-email-template', 'frontendmembermanager'
 			);
 			
 			$driver->sendEmail($entry->get('id'), $template_id);
+			
+			$result->setAttribute('status', 'success');
+			
+			if (!is_null($redirect)) redirect($redirect);
+			
+			return true;
 		}
 		
 		public function actionCheckCode($parent, $values, $redirect) {
 			$em = new EntryManager($this->parent);
 			$fm = new FieldManager($this->parent);
-			$code = @$values['recovery-code'];
 			
 			$section = $this->section;
 			$where = $joins = $group = null;
@@ -684,38 +671,28 @@
 				return false;
 			}
 			
-			$code_exists = (boolean)$this->database->fetchVar('entry_id', 0, sprintf(
-				"
-					SELECT
-						r.entry_id
-					FROM
-						`tbl_fmm_recovery_codes` AS r
-					WHERE
-						r.entry_id = '%s'
-						AND r.code = '%s'
-					LIMIT 1
-				",
-				$entry->get('id'), $code
-			));
+			if (!isset($values['recovery-code']) or $values['recovery-code'] == '') {
+				$result->setAttribute('status', 'failed');
+				$result->setAttribute('reason', 'missing-code');
+				
+				return false;
+			}
 			
-			if (!$code_exists) {
+			$password_field = $this->getMemberField(FMM::FIELD_MEMBERPASSWORD);
+			$password_data = $entry->getData($password_field->get('id'));
+			
+			if ($password_data['recovery_code'] != $values['recovery-code']) {
 				$result->setAttribute('status', 'failed');
 				$result->setAttribute('reason', 'incorrect-code');
 				
 				return false;
 			}
 			
-			$this->database->query(sprintf(
-				"
-					DELETE FROM
-						`tbl_fmm_recovery_codes`
-					WHERE
-						entry_id = '%s'
-						AND code = '%s'
-					LIMIT 1
-				",
-				$entry->get('id'), $code
-			));
+			// Delete recovery code:
+			$password_data['recovery_code'] = null;
+			
+			$entry->setData($password_field->get('id'), $password_data);
+			$entry->commit();
 			
 			$result->setAttribute('status', 'success');
 			

@@ -45,16 +45,15 @@
 				CREATE TABLE IF NOT EXISTS `tbl_entries_data_{$field_id}` (
 					`id` int(11) unsigned NOT NULL auto_increment,
 					`entry_id` int(11) unsigned NOT NULL,
-					`password` text default NULL,
-					`strength` enum(
-						'weak', 'good', 'strong'
-					) NOT NULL,
-					`length` tinyint NOT NULL,
-					PRIMARY KEY (`id`),
+					`recovery_code` varchar(32) default NULL,
+					`password` varchar(32) default NULL,
+					`strength` enum('weak','good','strong') NOT NULL,
+					`length` tinyint(4) NOT NULL,
+					PRIMARY KEY  (`id`),
 					KEY `entry_id` (`entry_id`),
-					FULLTEXT KEY `password` (`password`),
 					KEY `strength` (`strength`),
-					KEY `length` (`length`)
+					KEY `length` (`length`),
+					FULLTEXT KEY `password` (`password`)
 				)
 			");
 		}
@@ -122,7 +121,7 @@
 			
 			return $this->_engine->Database->fetchRow(0, "
 				SELECT
-					f.password, f.strength, f.length
+					f.password, f.strength, f.length, f.recovery_code
 				FROM
 					`tbl_entries_data_{$field_id}` AS f
 				WHERE
@@ -379,21 +378,20 @@
 			
 			if ($optional and (strlen($password) != '' or strlen($confirm) != '')) {
 				$required = true;
-				
-			} else if (!$optional) {
+			}
+			
+			else if (!$optional) {
 				$required = true;
 			}
 			
-			if ($required) {
-				return array(
-					'password'			=> $this->encodePassword($password),
-					'strength'			=> $this->checkPassword($password),
-					'length'			=> strlen($password)
-				);
-				
-			} else {
-				return $this->rememberData($entry_id);
-			}
+			if ($required) return array(
+				'password'			=> $this->encodePassword($password),
+				'strength'			=> $this->checkPassword($password),
+				'length'			=> strlen($password),
+				'recovery_code'		=> null
+			);
+			
+			else return $this->rememberData($entry_id);
 		}
 		
 	/*-------------------------------------------------------------------------
@@ -404,6 +402,7 @@
 			$element = new XMLElement($this->get('element_name'));
 			$element->setAttribute('strength', $data['strength']);
 			$element->setAttribute('length', $data['length']);
+			$element->setAttribute('recovery-code', $data['recovery_code']);
 			$wrapper->appendChild($element);
 		}
 		
