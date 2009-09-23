@@ -30,7 +30,7 @@
 			$this->_Parent->Database->query("DROP TABLE `tbl_fields_memberemail`");
 			$this->_Parent->Database->query("DROP TABLE `tbl_fields_memberpassword`");
 			$this->_Parent->Database->query("DROP TABLE `tbl_fields_memberstatus`");
-			$this->_Parent->Database->query("DROP TABLE `tbl_fmm_codes`");
+			$this->_Parent->Database->query("DROP TABLE `tbl_fmm_recovery_codes`");
 			$this->_Parent->Database->query("DROP TABLE `tbl_fmm_tracking`");
 		}
 		
@@ -66,9 +66,9 @@
 			");
 			
 			$this->_Parent->Database->query("
-				CREATE TABLE IF NOT EXISTS `tbl_fmm_codes` (
-					`entry_id` int(11) NOT NULL default '0',
-					`code` varchar(32) default NULL,
+				CREATE TABLE IF NOT EXISTS `tbl_fmm_recovery_codes` (
+					`entry_id` int(11) NOT NULL,
+					`code` varchar(32) NOT NULL,
 					PRIMARY KEY  (`entry_id`)
 				)
 			");
@@ -99,6 +99,11 @@
 					'page'		=> '/frontend/',
 					'delegate'	=> 'FrontendParamsResolve',
 					'callback'	=> 'parameters'
+				),
+				array(
+					'page'		=> '/system/preferences/',
+					'delegate'	=> 'AddCustomPreferenceFieldsets',
+					'callback'	=> 'addCustomPreferenceFieldsets'
 				)
 			);
 		}
@@ -168,6 +173,38 @@
 			foreach ($this->sessions as $session) {
 				$session->parameters($context);
 			}
+		}
+		
+		public function addCustomPreferenceFieldsets($context) {
+			$group = new XMLElement('fieldset');
+			$group->setAttribute('class', 'settings');
+			$group->appendChild(
+				new XMLElement('legend', 'Frontend Member Manager')
+			);
+			
+			$selected_id = Symphony::Configuration()->get(
+				'recovery-email-template', 'frontendmembermanager'
+			);
+			$driver = $this->_Parent->ExtensionManager->create('emailtemplatefilter');
+			$options = array(
+				array('', false, __('None'))
+			);
+			
+			foreach ($driver->getTemplates() as $values) {
+				$id = $values['id'];
+				$name = $values['name'];
+				$selected = ($id == $selected_id) ? true : false;
+				
+				$options[] = array($id, $selected, $name);
+			}
+			
+			$template = Widget::Label('Recovery Email Template');
+			$template->appendChild(Widget::Select(
+				'settings[frontendmembermanager][recovery-email-template]', $options
+			));
+			$group->appendChild($template);
+			
+			$context['wrapper']->appendChild($group);
 		}
 		
 	/*-------------------------------------------------------------------------
@@ -388,6 +425,8 @@
 			
 			if ($mode == FMM::TRACKING_LOGOUT) $member_id = 0;
 			
+			Frontend::Page()->_param["fmm-{$this->handle}-id"] = $member_id;
+			
 			$this->database->query("
 				INSERT INTO
 					`tbl_fmm_tracking`
@@ -528,13 +567,32 @@
 				$where, $joins, $group, true
 			);
 			
-			if (!$entry = @current($entries)) return false;
+			if (!$entry = @current($entries)) {
+				$result->setAttribute('status', 'failed');
+				$result->setAttribute('reason', 'incorrect-email');
+				
+				return false;
+			}
 			
 			$field = $this->getMemberField(FMM::FIELD_MEMBERSTATUS);
 			$data = $entry->getData($field->get('id'));
 			$status = @current($data['value']);
 			
-			if ($status != FMM::STATUS_ACTIVE) return false;
+			// The member is banned:
+			if ($status == FMM::STATUS_BANNED) {
+				$result->setAttribute('status', 'failed');
+				$result->setAttribute('reason', 'banned');
+				
+				return false;
+			}
+			
+			// The member is inactive:
+			if ($status == FMM::STATUS_PENDING) {
+				$result->setAttribute('status', 'failed');
+				$result->setAttribute('reason', 'pending');
+				
+				return false;
+			}
 			
 			$field = $this->getMemberField(FMM::FIELD_MEMBEREMAIL);
 			$data = $entry->getData($field->get('id'));
@@ -543,7 +601,7 @@
 			$this->database->query(sprintf(
 				"
 					INSERT INTO
-						`tbl_fmm_codes`
+						`tbl_fmm_recovery_codes`
 					SET
 						`entry_id` = '%s',
 						`code` = '%s'
@@ -558,10 +616,115 @@
 			$result->setAttribute('code', $code);
 			
 			// TODO: Add emailtemplatefilter integration.
+			
+			$driver = Frontend::Page()->ExtensionManager->create('emailtemplatefilter');
+			$template_id = Symphony::Configuration()->get(
+				'recovery-email-template', 'frontendmembermanager'
+			);
+			
+			$driver->sendEmail($entry->get('id'), $template_id);
 		}
 		
 		public function actionCheckCode($parent, $values, $redirect) {
+			$em = new EntryManager($this->parent);
+			$fm = new FieldManager($this->parent);
+			$code = @$values['recovery-code'];
 			
+			$section = $this->section;
+			$where = $joins = $group = null;
+			$name_where = $name_joins = $name_group = null;
+			
+			$result = new XMLElement('section');
+			$result->setAttribute('handle', $this->handle);
+			$parent->appendChild($result);
+			
+			// Get given fields:
+			foreach ($values as $key => $value) {
+				$field_id = $fm->fetchFieldIDFromElementName($key, $this->section->get('id'));
+				
+				if (!is_null($field_id)) {
+					$field = $fm->fetch($field_id, $this->section->get('id'));
+					
+					if ($field instanceof FieldMemberEmail) {
+						$field->buildDSRetrivalSQL($value, $joins, $where);
+					}
+				}
+			}
+			
+			// Find matching entries:
+			$entries = $em->fetch(
+				null, $this->section->get('id'), 1, null,
+				$where, $joins, $group, true
+			);
+			
+			if (!$entry = @current($entries)) {
+				$result->setAttribute('status', 'failed');
+				$result->setAttribute('status', 'incorrect-email');
+				
+				return false;
+			}
+			
+			$field = $this->getMemberField(FMM::FIELD_MEMBERSTATUS);
+			$data = $entry->getData($field->get('id'));
+			$status = @current($data['value']);
+			
+			// The member is banned:
+			if ($status == FMM::STATUS_BANNED) {
+				$result->setAttribute('status', 'failed');
+				$result->setAttribute('reason', 'banned');
+				
+				return false;
+			}
+			
+			// The member is inactive:
+			if ($status == FMM::STATUS_PENDING) {
+				$result->setAttribute('status', 'failed');
+				$result->setAttribute('reason', 'pending');
+				
+				return false;
+			}
+			
+			$code_exists = (boolean)$this->database->fetchVar('entry_id', 0, sprintf(
+				"
+					SELECT
+						r.entry_id
+					FROM
+						`tbl_fmm_recovery_codes` AS r
+					WHERE
+						r.entry_id = '%s'
+						AND r.code = '%s'
+					LIMIT 1
+				",
+				$entry->get('id'), $code
+			));
+			
+			if (!$code_exists) {
+				$result->setAttribute('status', 'failed');
+				$result->setAttribute('reason', 'incorrect-code');
+				
+				return false;
+			}
+			
+			$this->database->query(sprintf(
+				"
+					DELETE FROM
+						`tbl_fmm_recovery_codes`
+					WHERE
+						entry_id = '%s'
+						AND code = '%s'
+					LIMIT 1
+				",
+				$entry->get('id'), $code
+			));
+			
+			$result->setAttribute('status', 'success');
+			
+			$this->setMember($entry);
+			$this->updateTrackingData(FMM::TRACKING_LOGIN);
+			
+			if (!is_null($redirect)) redirect($redirect);
+			
+			return true;
 		}
 		
 		public function actionLogin($parent, $values, $redirect) {
@@ -622,7 +785,7 @@
 				}
 				
 				else {
-					$result->setAttribute('reason', 'incorrect-username');
+					$result->setAttribute('reason', 'incorrect-email');
 				}
 				
 				return false;
@@ -635,14 +798,16 @@
 			
 			// The member is banned:
 			if ($status == FMM::STATUS_BANNED) {
-				$result->setAttribute('status', 'banned');
+				$result->setAttribute('status', 'failed');
+				$result->setAttribute('reason', 'banned');
 				
 				return false;
 			}
 			
 			// The member is inactive:
 			if ($status == FMM::STATUS_PENDING) {
-				$result->setAttribute('status', 'pending');
+				$result->setAttribute('status', 'failed');
+				$result->setAttribute('reason', 'pending');
 				
 				return false;
 			}

@@ -1,6 +1,6 @@
 <?php
 	
-	class EventFMM_RequestCode extends Event {
+	class EventFMM_Request_Code extends Event {
 		protected $results = null;
 		
 		public static function about() {

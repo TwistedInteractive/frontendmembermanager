@@ -193,11 +193,29 @@
 		Output:
 	-------------------------------------------------------------------------*/
 		
-		public function appendFormattedElement(&$wrapper, $rows, $encode = false) {
+		public function appendFormattedElement(&$wrapper, $rows, $encode = false, $mode = null, $entry_id = null) {
 			$data = $this->sanitizeData($rows);
+			
+			$recovery_code = Symphony::Database()->fetchVar('code', 0, sprintf(
+				"
+					SELECT
+						r.code
+					FROM
+						`tbl_fmm_recovery_codes` AS r
+					WHERE
+						r.entry_id = '%s'
+					LIMIT 1
+				",
+				$entry_id
+			));
 			
 			$element = new XMLElement($this->get('element_name'));
 			$element->setAttribute('handle', $this->_states[$data['value']][0]);
+			
+			if (!empty($recovery_code)) {
+				$element->setAttribute('recovery-code', $recovery_code);
+			}
+			
 			$element->setValue($this->_states[$data['value']][2]);
 			$wrapper->appendChild($element);
 		}
