@@ -85,8 +85,7 @@
 			
 			$fields = array(
 				'field_id'		=> $this->get('id'),
-				'formatter'		=> $this->get('formatter'),
-				'validator'		=> $this->get('validator')
+				'formatter'		=> $this->get('formatter')
 			);
 			
 			$this->_engine->Database->query("
