@@ -19,7 +19,7 @@
 		}
 		
 		protected function __trigger() {
-			$driver = $this->_Parent->ExtensionManager->create('frontendmembermanager');
+			$driver = Frontend::Page()->ExtensionManager->create('frontendmembermanager');
 			return $driver->actionLogout();
 		}
 	}

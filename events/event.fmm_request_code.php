@@ -22,7 +22,7 @@
 		}
 		
 		protected function __trigger() {
-			$driver = $this->_Parent->ExtensionManager->create('frontendmembermanager');
+			$driver = Frontend::Page()->ExtensionManager->create('frontendmembermanager');
 			
 			return $driver->actionRequestCode(@$_REQUEST['fields'], @$_REQUEST['redirect']);
 		}
