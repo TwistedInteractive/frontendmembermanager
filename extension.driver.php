@@ -198,6 +198,14 @@
 			$context['wrapper']->appendChild($group);
 		}
 		
+		public function getSession($section) {
+			foreach ($this->sessions as $session) if ($section and $session->handle == $section) {
+				return $session;			
+			}
+			
+			return null;
+		}
+		
 	/*-------------------------------------------------------------------------
 		Actions:
 	-------------------------------------------------------------------------*/
@@ -218,7 +226,12 @@
 			}
 			
 			foreach ($this->sessions as $session) if ($section and $session->handle == $section) {
-				$session->actionRequestCode($result, $values, $redirect);				
+				$parent = new XMLElement('section');
+				$parent->setAttribute('handle', $session->handle);
+				
+				$session->actionRequestCode($parent, $values, $redirect);
+				
+				$result->appendChild($parent);
 			}			
 			
 			return $result;
@@ -240,7 +253,12 @@
 			}
 			
 			foreach ($this->sessions as $session) if ($section and $session->handle == $section) {
-				$session->actionCheckCode($result, $values, $redirect);				
+				$parent = new XMLElement('section');
+				$parent->setAttribute('handle', $session->handle);
+				
+				$session->actionCheckCode($parent, $values, $redirect);
+				
+				$result->appendChild($parent);			
 			}			
 			
 			return $result;
@@ -262,7 +280,12 @@
 			}
 			
 			foreach ($this->sessions as $session) if ($section and $session->handle == $section) {
-				$session->actionLogin($result, $values, $redirect);				
+				$parent = new XMLElement('section');
+				$parent->setAttribute('handle', $session->handle);
+				
+				$session->actionLogin($parent, $values, $redirect);
+				
+				$result->appendChild($parent);
 			}			
 			
 			return $result;
@@ -272,7 +295,12 @@
 			$result = new XMLElement('fmm-logout');
 			
 			foreach ($this->sessions as $session) {
-				$session->actionLogout($result);
+				$parent = new XMLElement('section');
+				$parent->setAttribute('handle', $session->handle);
+				
+				$session->actionLogout($parent);
+				
+				$result->appendChild($parent);
 			}
 			
 			return $result;
@@ -293,7 +321,12 @@
 			}
 			
 			foreach ($this->sessions as $session) {
-				$session->actionStatus($result);
+				$parent = new XMLElement('section');
+				$parent->setAttribute('handle', $session->handle);
+				
+				$session->actionStatus($parent);
+				
+				$result->appendChild($parent);
 			}
 			
 			return $result;
@@ -312,6 +345,13 @@
 		const TRACKING_NORMAL = 'normal';
 		const TRACKING_LOGIN = 'login';
 		const TRACKING_LOGOUT = 'logout';
+		
+		const RESULT_SUCCESS = 0;
+		const RESULT_INCORRECT_PASSWORD = 1;
+		const RESULT_INCORRECT_EMAIL = 2;
+		const RESULT_INCORRECT_CODE = 3;
+		const RESULT_ACCOUNT_BANNED = 4;
+		const RESULT_ACCOUNT_PENDING = 5;
 	}
 	
 	class FMM_Session {
@@ -527,17 +567,13 @@
 		Actions:
 	-------------------------------------------------------------------------*/
 		
-		public function actionRequestCode($parent, $values, $redirect) {
+		public function actionRequestCode($result, $values, $redirect) {
 			$em = new EntryManager($this->parent);
 			$fm = new FieldManager($this->parent);
 			
 			$section = $this->section;
 			$where = $joins = $group = null;
 			$name_where = $name_joins = $name_group = null;
-			
-			$result = new XMLElement('section');
-			$result->setAttribute('handle', $this->handle);
-			$parent->appendChild($result);
 			
 			// Get given fields:
 			foreach ($values as $key => $value) {
@@ -562,7 +598,7 @@
 				$result->setAttribute('status', 'failed');
 				$result->setAttribute('reason', 'incorrect-email');
 				
-				return false;
+				return FMM::RESULT_INCORRECT_EMAIL;
 			}
 			
 			$field = $this->getMemberField(FMM::FIELD_MEMBERSTATUS);
@@ -574,7 +610,7 @@
 				$result->setAttribute('status', 'failed');
 				$result->setAttribute('reason', 'banned');
 				
-				return false;
+				return FMM::RESULT_ACCOUNT_BANNED;
 			}
 			
 			// The member is inactive:
@@ -582,7 +618,7 @@
 				$result->setAttribute('status', 'failed');
 				$result->setAttribute('reason', 'pending');
 				
-				return false;
+				return FMM::RESULT_ACCOUNT_PENDING;
 			}
 			
 			$email_field = $this->getMemberField(FMM::FIELD_MEMBEREMAIL);
@@ -610,20 +646,16 @@
 			
 			if (!is_null($redirect)) redirect($redirect);
 			
-			return true;
+			return FMM::RESULT_SUCCESS;
 		}
 		
-		public function actionCheckCode($parent, $values, $redirect) {
+		public function actionCheckCode($result, $values, $redirect) {
 			$em = new EntryManager($this->parent);
 			$fm = new FieldManager($this->parent);
 			
 			$section = $this->section;
 			$where = $joins = $group = null;
 			$name_where = $name_joins = $name_group = null;
-			
-			$result = new XMLElement('section');
-			$result->setAttribute('handle', $this->handle);
-			$parent->appendChild($result);
 			
 			// Get given fields:
 			foreach ($values as $key => $value) {
@@ -648,7 +680,7 @@
 				$result->setAttribute('status', 'failed');
 				$result->setAttribute('status', 'incorrect-email');
 				
-				return false;
+				return FMM::RESULT_INCORRECT_EMAIL;
 			}
 			
 			$field = $this->getMemberField(FMM::FIELD_MEMBERSTATUS);
@@ -660,7 +692,7 @@
 				$result->setAttribute('status', 'failed');
 				$result->setAttribute('reason', 'banned');
 				
-				return false;
+				return FMM::RESULT_ACCOUNT_BANNED;
 			}
 			
 			// The member is inactive:
@@ -668,14 +700,14 @@
 				$result->setAttribute('status', 'failed');
 				$result->setAttribute('reason', 'pending');
 				
-				return false;
+				return FMM::RESULT_ACCOUNT_PENDING;
 			}
 			
 			if (!isset($values['recovery-code']) or $values['recovery-code'] == '') {
 				$result->setAttribute('status', 'failed');
 				$result->setAttribute('reason', 'missing-code');
 				
-				return false;
+				return FMM::RESULT_INCORRECT_CODE;
 			}
 			
 			$password_field = $this->getMemberField(FMM::FIELD_MEMBERPASSWORD);
@@ -685,7 +717,7 @@
 				$result->setAttribute('status', 'failed');
 				$result->setAttribute('reason', 'incorrect-code');
 				
-				return false;
+				return FMM::RESULT_INCORRECT_CODE;
 			}
 			
 			// Delete recovery code:
@@ -701,20 +733,16 @@
 			
 			if (!is_null($redirect)) redirect($redirect);
 			
-			return true;
+			return FMM::RESULT_SUCCESS;
 		}
 		
-		public function actionLogin($parent, $values, $redirect) {
+		public function actionLogin($result, $values, $redirect, $simulate = false) {
 			$em = new EntryManager($this->parent);
 			$fm = new FieldManager($this->parent);
 			
 			$section = $this->section;
 			$where = $joins = $group = null;
 			$name_where = $name_joins = $name_group = null;
-			
-			$result = new XMLElement('section');
-			$result->setAttribute('handle', $this->handle);
-			$parent->appendChild($result);
 			
 			// Get given fields:
 			foreach ($values as $key => $value) {
@@ -759,13 +787,15 @@
 				
 				if ($name_entry = @current($name_entries)) {
 					$result->setAttribute('reason', 'incorrect-password');
+					
+					return FMM::RESULT_INCORRECT_PASSWORD;
 				}
 				
 				else {
 					$result->setAttribute('reason', 'incorrect-email');
+					
+					return FMM::RESULT_INCORRECT_EMAIL;
 				}
-				
-				return false;
 			}
 			
 			$this->setMember($entry);
@@ -778,7 +808,7 @@
 				$result->setAttribute('status', 'failed');
 				$result->setAttribute('reason', 'banned');
 				
-				return false;
+				return FMM::RESULT_ACCOUNT_BANNED;
 			}
 			
 			// The member is inactive:
@@ -786,33 +816,29 @@
 				$result->setAttribute('status', 'failed');
 				$result->setAttribute('reason', 'pending');
 				
-				return false;
+				return FMM::RESULT_ACCOUNT_PENDING;
 			}
 			
 			$result->setAttribute('status', 'success');
 			
-			$this->updateTrackingData(FMM::TRACKING_LOGIN);
+			if (!$simulate) {
+				$this->updateTrackingData(FMM::TRACKING_LOGIN);
+				
+				if (!is_null($redirect)) redirect($redirect);
+			}
 			
-			if (!is_null($redirect)) redirect($redirect);
-			
-			return true;
+			return FMM::RESULT_SUCCESS;
 		}
 		
-		public function actionLogout($parent) {
-			$result = new XMLElement('section');
-			$result->setAttribute('handle', $this->handle);
-			
+		public function actionLogout($result) {
 			$this->updateTrackingData(FMM::TRACKING_LOGOUT);
 			
 			$result->setAttribute('status', 'success');
 			
-			$parent->appendChild($result);
+			return FMM::RESULT_SUCCESS;
 		}
 		
-		public function actionStatus($parent) {
-			$result = new XMLElement('section');
-			$result->setAttribute('handle', $this->handle);
-			
+		public function actionStatus($result) {
 			if ($this->getMemberId() and $this->getMemberStatus() == FMM::STATUS_ACTIVE) {
 				$result->setAttribute('logged-in', 'yes');
 			}
@@ -821,7 +847,7 @@
 				$result->setAttribute('logged-in', 'no');
 			}
 			
-			$parent->appendChild($result);
+			return FMM::RESULT_SUCCESS;
 		}
 	};
 	
