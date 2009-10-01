@@ -173,7 +173,7 @@
 				new XMLElement('legend', 'Frontend Member Manager')
 			);
 			
-			$selected_id = Symphony::Configuration()->get(
+			$selected_id = $this->_Parent->Configuration->get(
 				'recovery-email-template', 'frontendmembermanager'
 			);
 			$driver = $this->_Parent->ExtensionManager->create('emailtemplatefilter');
@@ -636,7 +636,7 @@
 			
 			// Send recovery email:
 			$driver = Frontend::Page()->ExtensionManager->create('emailtemplatefilter');
-			$template_id = Symphony::Configuration()->get(
+			$template_id = $this->_Parent->Configuration->get(
 				'recovery-email-template', 'frontendmembermanager'
 			);
 			
