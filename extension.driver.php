@@ -367,7 +367,7 @@
 			$this->parent = $parent;
 			$this->section = $section;
 			$this->handle = $section->get('handle');
-			
+
 			$this->setAccessId(@$_SESSION['fmm'][$this->handle]);
 			
 			$this->updateTrackingData();
@@ -636,7 +636,7 @@
 			
 			// Send recovery email:
 			$driver = Frontend::Page()->ExtensionManager->create('emailtemplatefilter');
-			$template_id = $this->_Parent->Configuration->get(
+			$template_id = $this->parent->Configuration->get(
 				'recovery-email-template', 'frontendmembermanager'
 			);
 			
