@@ -352,6 +352,7 @@
 		const RESULT_INCORRECT_CODE = 3;
 		const RESULT_ACCOUNT_BANNED = 4;
 		const RESULT_ACCOUNT_PENDING = 5;
+		const RESULT_ERROR = 666;
 	}
 	
 	class FMM_Session {
@@ -744,12 +745,18 @@
 			$where = $joins = $group = null;
 			$name_where = $name_joins = $name_group = null;
 			
+			$has_email = false;
+			$has_password = false;
+			
 			// Get given fields:
 			foreach ($values as $key => $value) {
 				$field_id = $fm->fetchFieldIDFromElementName($key, $this->section->get('id'));
 				
 				if (!is_null($field_id)) {
 					$field = $fm->fetch($field_id, $this->section->get('id'));
+					
+					if ($field instanceof FieldMemberEmail) $has_email = true;
+					if ($field instanceof FieldMemberPassword) $has_password = true;
 					
 					if (
 						$field instanceof FieldMemberEmail
@@ -767,6 +774,13 @@
 						}
 					}
 				}
+			}
+			
+			if ($has_email == false || $has_password == false) {
+				$result->setAttribute('status', 'failed');
+				if ($has_email == false) $result->setAttribute('reason', 'missing-email-field');
+				if ($has_password == false) $result->setAttribute('reason', 'missing-password-field');
+				return FMM::RESULT_ERROR;
 			}
 			
 			// Find matching entries:
