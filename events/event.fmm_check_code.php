@@ -27,9 +27,10 @@
 	<input type="submit" name="action[check-code]" value="Login" />
 </form>').'</code></pre>
 			<h3>Resetting passwords</h3>
-			<p>You can also use this feature to allow the user to reset their password. The only thing you need to do for that is supply a `password`-field and a `confirm`-field.</p>
+			<p>You can also use this feature to allow the user to reset their password. The only thing you need to do for that is supply a `password`-, an `email`- and a `confirm`-field. The e-mail address field should have the same name as the field of your users-section.</p>
 			<p>An example of this form could look something like this:</p>
 			<pre class="xml"><code>'.htmlentities('<form method="post" action="">
+	E-mail addres: <input type="text" name="fields[e-mail-address]" /><br />
 	New password: <input type="text" name="fields[password]" /><br />
 	Confirm: <input type="text" name="fields[confirm]" /><br />
 	<input type="hidden" name="fields[recovery-code]" value="{$code}" />
