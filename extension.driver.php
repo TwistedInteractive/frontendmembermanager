@@ -722,6 +722,19 @@
 				return FMM::RESULT_INCORRECT_CODE;
 			}
 			
+			// Reset password:
+			if(isset($values['password']) && isset($values['confirm']))
+			{
+				if($values['password'] == $values['confirm'])
+				{
+					$password_data['password'] = $password_field->encodePassword($values['password']);
+				} else {
+					$result->setAttribute('status', 'failed');
+					$result->setAttribute('reason', 'passwords-mismatch');
+					return FMM::RESULT_INCORRECT_PASSWORD;
+				}
+			}
+			
 			// Delete recovery code:
 			$password_data['recovery_code'] = null;
 			

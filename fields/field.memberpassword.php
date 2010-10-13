@@ -88,7 +88,7 @@
 			return false;
 		}
 		
-		protected function encodePassword($password) {
+		public function encodePassword($password) {
 			return md5($this->get('salt') . $password);
 		}
 		
