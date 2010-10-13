@@ -14,6 +14,18 @@
 			);
 		}
 		
+		public function documentation()
+		{
+			return '<p>Provides information about the login-status of the user.</p>
+<p>Example output:</p>
+<pre class="xml"><code>'.htmlentities('<fmm-status status="ok">
+	<section handle="users" logged-in="yes" />
+</fmm-status>
+').'</pre></code>
+';
+		
+		}
+		
 		public function load() {
 			return $this->__trigger();
 		}

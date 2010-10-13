@@ -176,6 +176,7 @@
 			$selected_id = $this->_Parent->Configuration->get(
 				'recovery-email-template', 'frontendmembermanager'
 			);
+			
 			$driver = $this->_Parent->ExtensionManager->create('emailtemplatefilter');
 			$options = array(
 				array('', false, __('None'))
@@ -226,6 +227,7 @@
 			}
 			
 			foreach ($this->sessions as $session) if ($section and $session->handle == $section) {
+				
 				$parent = new XMLElement('section');
 				$parent->setAttribute('handle', $session->handle);
 				
@@ -271,7 +273,6 @@
 			// Not setup yet:
 			if (!$this->initialize()) {
 				$result->setAttribute('status', 'not-setup');
-				
 				return $result;
 			}
 			
@@ -750,6 +751,7 @@
 			
 			// Get given fields:
 			foreach ($values as $key => $value) {
+				
 				$field_id = $fm->fetchFieldIDFromElementName($key, $this->section->get('id'));
 				
 				if (!is_null($field_id)) {

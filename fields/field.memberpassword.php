@@ -426,7 +426,6 @@
 			if ($andOperation) {
 				foreach ($data as $value) {
 					$this->_key++;
-					$value = $this->encodePassword($value);
 					$joins .= "
 						LEFT JOIN
 							`tbl_entries_data_{$field_id}` AS t{$field_id}_{$this->_key}
@@ -434,7 +433,8 @@
 					";
 					$where .= "
 						AND (
-							t{$field_id}_{$this->_key}.password = '{$value}'
+							t{$field_id}_{$this->_key}.password = '".$this->encodePassword($value)."'
+							OR t{$field_id}_{$this->_key}.recovery_code = '{$value}'
 						)
 					";
 				}
@@ -447,19 +447,23 @@
 					$data = array($data);
 				}
 				
-				foreach ($data as &$value) {
-					$value = $this->encodePassword($value);
+				$values = array();
+				foreach($data as $value)
+				{
+					$values[] = $this->encodePassword($value);
 				}
 				
 				$this->_key++;
 				$data = implode("', '", $data);
+				$values = implode("', '", $values);
 				$joins .= "
 					LEFT JOIN
 						`tbl_entries_data_{$field_id}` AS t{$field_id}_{$this->_key}
 						ON (e.id = t{$field_id}_{$this->_key}.entry_id)
 				";
 				$where .= "
-					AND t{$field_id}_{$this->_key}.password IN ('{$data}')
+					AND t{$field_id}_{$this->_key}.password IN ('".$values."')
+					OR t{$field_id}_{$this->_key}.recovery_code IN ('{$data}')
 				";
 			}
 			

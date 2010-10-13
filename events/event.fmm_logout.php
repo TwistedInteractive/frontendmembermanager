@@ -18,6 +18,11 @@
 			return $this->__trigger();
 		}
 		
+		public function documentation()
+		{
+			return '<p>Add this event to the logout page. As soon as the user enters this page a logout is performed.</p>';
+		}
+		
 		protected function __trigger() {
 			$driver = Frontend::Page()->ExtensionManager->create('frontendmembermanager');
 			return $driver->actionLogout();

@@ -10,7 +10,7 @@
 		public function __construct(&$parent) {
 			parent::__construct($parent);
 			
-			$this->_name = 'Member Name';
+			$this->_name = 'Member E-mail';
 			
 			// Set defaults:
 			$this->set('show_column', 'yes');
@@ -25,12 +25,10 @@
 					`entry_id` int(11) unsigned NOT NULL,
 					`handle` varchar(255) default NULL,
 					`value` text,
-					`value_formatted` text,
 					PRIMARY KEY  (`id`),
 					KEY `entry_id` (`entry_id`),
 					KEY `handle` (`handle`),
-					FULLTEXT KEY `value` (`value`),
-					FULLTEXT KEY `value_formatted` (`value_formatted`)
+					FULLTEXT KEY `value` (`value`)
 				)
 			");
 		}
@@ -66,15 +64,6 @@
 			
 			$wrapper->appendChild($this->buildSummaryBlock($errors));	
 			
-			$group = new XMLElement('div', null, array('class' => 'group'));
-			
-			$group->appendChild(
-				$this->buildFormatterSelect($this->get('formatter'),
-				"fields[{$order}][formatter]", 'Text Formatter')
-			);
-			
-			$wrapper->appendChild($group);
-			
 			$this->appendShowColumnCheckbox($wrapper);						
 		}
 		
@@ -84,8 +73,7 @@
 			if (!parent::commit() or $this->get('id') === false) return false;
 			
 			$fields = array(
-				'field_id'		=> $this->get('id'),
-				'formatter'		=> $this->get('formatter')
+				'field_id'		=> $this->get('id')
 			);
 			
 			$this->_engine->Database->query("
@@ -124,23 +112,6 @@
 	/*-------------------------------------------------------------------------
 		Input:
 	-------------------------------------------------------------------------*/
-		
-		public function applyFormatting($data) {
-			if ($this->get('formatter')) {
-				if (isset($this->_ParentCatalogue['entrymanager'])) {
-					$tfm = $this->_ParentCatalogue['entrymanager']->formatterManager;
-				} else {
-					$tfm = new TextformatterManager($this->_engine);
-				}
-				
-				$formatter = $tfm->create($this->get('formatter'));
-				$formatted = $formatter->run($data);
-				
-			 	return preg_replace('/&(?![a-z]{0,4}\w{2,3};|#[x0-9a-f]{2,6};)/i', '&amp;', $formatted);
-			}
-			
-			return null;		
-		}
 		
 		public function validateRule($data) {			
 			$rule = '/^\w(?:\.?[\w%+-]+)*@\w(?:[\w-]*\.)+?[a-z]{2,}$/i';
@@ -192,17 +163,9 @@
 			
 			$handle = Lang::createHandle($data);
 			
-			if (
-				$this->get('formatter') == 'none'
-				or !($formatted = $this->applyFormatting($data))
-			) {
-				$formatted = General::sanitize($data);
-			}
-			
 			$result = array(
 				'handle'			=> $handle,
-				'value'				=> $data,
-				'value_formatted'	=> $formatted
+				'value'				=> $data
 			);
 			
 			return $result;
@@ -211,20 +174,13 @@
 	/*-------------------------------------------------------------------------
 		Output:
 	-------------------------------------------------------------------------*/
-		
-		public function appendFormattedElement(&$wrapper, $data, $encode = false) {
-			$element = new XMLElement($this->get('element_name'));
-			$element->setAttribute('handle', $data['handle']);
-			$element->setValue($data['value_formatted']);
-			$wrapper->appendChild($element);
-		}
-		
+	
 		public function prepareTableValue($data, XMLElement $link = null) {
 			if (empty($data)) return;
 			
 			return parent::prepareTableValue(
 				array(
-					'value'		=> $data['value_formatted']
+					'value'		=> $data['value']
 				), $link
 			);
 		}
