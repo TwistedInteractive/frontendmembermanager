@@ -6,8 +6,8 @@
 				'name'				=> 'Frontend Member Manager: Status',
 				'author'			=> array(
 					'name'				=> 'Rowan Lewis',
-					'website'			=> 'http://www.pixelcarnage.com/',
-					'email'				=> 'rowan@pixelcarnage.com'
+					'website'			=> 'http://rowanlewis.com/',
+					'email'				=> 'me@rowanlewis.com'
 				),
 				'version'			=> '1.0',
 				'release-date'		=> '2009-02-03'
