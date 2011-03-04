@@ -253,11 +253,8 @@
 				LIMIT 1
 			");
 			
-			$label = new XMLElement('div', $this->get('label'));
+			$label = new XMLElement('div');
 			$label->setAttribute('class', 'label');
-			
-			$container = new XMLElement('div');
-			$container->setAttribute('class', 'container');
 			
 			$group = new XMLElement('div');
 			$group->setAttribute('class', 'group');
@@ -275,27 +272,26 @@
 					"fields{$prefix}[{$handle}][optional]{$postfix}", 'yes', 'hidden'
 				));
 				
-				$container->appendChild($group);
+				$label->appendChild($group);
 				
 				$help = new XMLElement('p');
 				$help->setAttribute('class', 'help');
 				$help->setValue(__('Leave new password field blank to keep the current password'));
 				
-				$container->appendChild($help);
-				
+				$label->appendChild($help);
+			}
+			
 			// Create password:
-			} else {
+			else {
 				$this->displayPublishPassword(
-					$group, 'Password', "{$prefix}[{$handle}][password]{$postfix}"
+					$group, $this->get('label'), "{$prefix}[{$handle}][password]{$postfix}"
 				);
 				$this->displayPublishPassword(
 					$group, 'Confirm Password', "{$prefix}[{$handle}][confirm]{$postfix}"
 				);
 				
-				$container->appendChild($group);
+				$label->appendChild($group);
 			}
-			
-			$label->appendChild($container);
 			
 			if ($error != null) {
 				$label = Widget::wrapFormElementWithError($label, $error);

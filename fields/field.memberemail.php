@@ -10,7 +10,7 @@
 		public function __construct(&$parent) {
 			parent::__construct($parent);
 			
-			$this->_name = 'Member E-mail';
+			$this->_name = 'Member Email';
 			
 			// Set defaults:
 			$this->set('show_column', 'yes');
@@ -136,7 +136,7 @@
 				return self::__INVALID_FIELDS__;	
 			}
 			
-			$result = $this->_engine->Database->query("
+			$result = $this->_engine->Database->fetch("
 				SELECT
 					f.id
 				FROM
@@ -147,7 +147,7 @@
 				LIMIT 1
 			");
 			
-			if ($this->_engine->Database->numOfRows() > 0) {
+			if (count($result) > 0) {
 				$error = "'{$label}' is already in use by another member.";
 				
 				return self::__INVALID_FIELDS__;	
