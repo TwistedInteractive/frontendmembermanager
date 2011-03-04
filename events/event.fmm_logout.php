@@ -14,13 +14,12 @@
 			);
 		}
 		
-		public function load() {
-			return $this->__trigger();
+		public static function documentation() {
+			return file_get_contents(dirname(__FILE__) . '/' . basename(__FILE__, '.php') . '.html');
 		}
 		
-		public function documentation()
-		{
-			return '<p>Add this event to the logout page. As soon as the user enters this page a logout is performed.</p>';
+		public function load() {
+			return $this->__trigger();
 		}
 		
 		protected function __trigger() {

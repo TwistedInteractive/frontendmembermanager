@@ -14,16 +14,8 @@
 			);
 		}
 		
-		public function documentation()
-		{
-			return '<p>Provides information about the login-status of the user.</p>
-<p>Example output:</p>
-<pre class="xml"><code>'.htmlentities('<fmm-status status="ok">
-	<section handle="users" logged-in="yes" />
-</fmm-status>
-').'</pre></code>
-';
-		
+		public static function documentation() {
+			return file_get_contents(dirname(__FILE__) . '/' . basename(__FILE__, '.php') . '.html');
 		}
 		
 		public function load() {

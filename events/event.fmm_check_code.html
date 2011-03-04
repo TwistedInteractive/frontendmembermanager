@@ -1,0 +1,23 @@
+<p>Put this event on the page where you let your user login according to the code supplied to them. The `$code` is provided to the page as a parameter (for example: the user clicked on a generated link in the e-mail he received when he claimed he lost his password).</p>
+
+<p>An example form could look something like this:</p>
+
+<pre class="xml"><code>&lt;form method="post" action=""&gt;
+	&lt;input type="hidden" name="fields[recovery-code]" value="{$code}" /&gt;
+	&lt;input type="hidden" name="fields[section]" value="users" /&gt;
+	&lt;input type="submit" name="action[check-code]" value="Login" /&gt;
+&lt;/form&gt;</code></pre>
+
+<h3>Resetting passwords</h3>
+
+<p>You can also use this feature to allow the user to reset their password. The only thing you need to do for that is supply a `password`-, an `email`- and a `confirm`-field. The e-mail address field should have the same name as the field of your users-section.</p>
+<p>An example of this form could look something like this:</p>
+
+<pre class="xml"><code>&lt;form method="post" action=""&gt;
+	E-mail addres: &lt;input type="text" name="fields[e-mail-address]" /&gt;&lt;br /&gt;
+	New password: &lt;input type="text" name="fields[password]" /&gt;&lt;br /&gt;
+	Confirm: &lt;input type="text" name="fields[confirm]" /&gt;&lt;br /&gt;
+	&lt;input type="hidden" name="fields[recovery-code]" value="{$code}" /&gt;
+	&lt;input type="hidden" name="fields[section]" value="users" /&gt;
+	&lt;input type="submit" name="action[check-code]" value="Change password" /&gt;
+&lt;/form&gt;</code></pre>

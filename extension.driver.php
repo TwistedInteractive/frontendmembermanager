@@ -15,12 +15,12 @@
 		public function about() {
 			return array(
 				'name'			=> 'Frontend Member Manager',
-				'version'		=> '1.0.11',
-				'release-date'	=> '2009-09-2',
+				'version'		=> '1.0.12',
+				'release-date'	=> '2011-03-04',
 				'author'		=> array(
 					'name'			=> 'Rowan Lewis',
-					'website'		=> 'http://pixelcarnage.com/',
-					'email'			=> 'rowan@pixelcarnage.com'
+					'website'		=> 'http://rowanlewis.com/',
+					'email'			=> 'me@rowanlewis.com'
 				),
 				'description' => 'Allows you to manage a member driven community.'
 			);
@@ -723,14 +723,15 @@
 			}
 			
 			// Reset password:
-			if(isset($values['password']) && isset($values['confirm']))
-			{
-				if($values['password'] == $values['confirm'])
-				{
+			if(isset($values['password']) && isset($values['confirm'])) {
+				if ($values['password'] == $values['confirm']) {
 					$password_data['password'] = $password_field->encodePassword($values['password']);
-				} else {
+				}
+				
+				else {
 					$result->setAttribute('status', 'failed');
 					$result->setAttribute('reason', 'passwords-mismatch');
+					
 					return FMM::RESULT_INCORRECT_PASSWORD;
 				}
 			}

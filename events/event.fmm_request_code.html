@@ -1,0 +1,15 @@
+<p>This event is used to make use of the forgot password feature?</p>
+<p>To set it up, make sure you got the <a href="http://symphony-cms.com/download/extensions/view/20743/">Email Template Filter</a> installed, and follow the following steps:</p>
+
+<ul>
+	<li>Read the tutorial accompanied with the Email Template Filter.</li>
+	<li>Create an email template for password retreival and set it in the preferences page.</li>
+</ul>
+
+<p>An example form could look something like this:</p>
+
+<pre class="xml"><code>&lt;form method="post" action=""&gt;
+	E-mail address: &lt;input type="text" name="fields[e-mail-address]" />&lt;br /&gt;
+	&lt;input type="hidden" name="fields[section]" value="users" /&gt;
+	&lt;input type="submit" name="action[request-code]" value="Reset password" /&gt;
+&lt;/form&gt;</code></pre>

@@ -17,27 +17,8 @@
 			);
 		}
 		
-		public function documentation()
-		{
-			return '<p>To login, you have to create a form with the following fields:</p>
-		<ul>
-			<li>An input field for the e-mail address with as name the handle of your e-mail field.</li>
-			<li>An input field for the password with with as name the handle of your password field.</li>
-			<li>A hidden field with the section name of the users-section.</li>
-			<li>A submit-button with the name <code>action[login]</code>.</li>
-			<li><em>(optional):</em> A hidden field with the URL to redirect to after login.</li>
-		</ul>
-			<p>An example login form:</p>
-<pre class="xml"><code>'.htmlentities('<form method="post" action="">
-	E-mail address: <input type="text" name="fields[e-mail-address]" />
-	Password: <input type="text" name="fields[password]" />
-	<input type="hidden" name="fields[section]" value="users" />
-	<input type="hidden" name="redirect" value="/" />
-	<input type="submit" name="action[login]" value="Login" />
-</form>').'
-</code></pre>
-<p>When a user is logged in, there will be a extra parameter available called <code>$fmm-<em>(section name)</em>-id</code> with the ID of the currently logged in user. You can use this parameter for example to retrieve user information from your users section.</p>
-';
+		public static function documentation() {
+			return file_get_contents(dirname(__FILE__) . '/' . basename(__FILE__, '.php') . '.html');
 		}
 		
 		public function load() {
