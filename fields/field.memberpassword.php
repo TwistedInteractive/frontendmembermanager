@@ -66,7 +66,7 @@
 		Utilities:
 	-------------------------------------------------------------------------*/
 		
-		protected function checkPassword($password) {
+		public function checkPassword($password) {
 			$strength = 0;
 			$patterns = array(
 				'/[a-z]/', '/[A-Z]/', '/[0-9]/',
@@ -82,7 +82,7 @@
 			return $strength;
 		}
 		
-		protected function compareStrength($a, $b) {
+		public function compareStrength($a, $b) {
 			if ($this->_strength_map[$a] >= $this->_strength_map[$b]) return true;
 			
 			return false;

@@ -353,6 +353,8 @@
 		const RESULT_INCORRECT_CODE = 3;
 		const RESULT_ACCOUNT_BANNED = 4;
 		const RESULT_ACCOUNT_PENDING = 5;
+        const RESULT_NO_PASSWORD = 6;
+        const RESULT_NOT_STRONG_ENOUGH = 7;
 		const RESULT_ERROR = 666;
 	}
 	
@@ -605,7 +607,7 @@
 			
 			$field = $this->getMemberField(FMM::FIELD_MEMBERSTATUS);
 			$data = $entry->getData($field->get('id'));
-			$status = @current($data['value']);
+            $status = is_array($data['value']) ? current($data['value']) : $data['value'];
 			
 			// The member is banned:
 			if ($status == FMM::STATUS_BANNED) {
@@ -734,11 +736,27 @@
 					
 					return FMM::RESULT_INCORRECT_PASSWORD;
 				}
-			}
-			
+			} else {
+                // No password data sent
+                $result->setAttribute('status', 'failed');
+                $result->setAttribute('reason', 'no-password-sent');
+                return FMM::RESULT_NO_PASSWORD;
+            }
+
+            // Check password strength:
+            $strength = $password_field->checkPassword($values['password']);
+            if(!$password_field->compareStrength($strength, $password_field->get('strength')))
+            {
+                // Not strong enough!
+                $result->setAttribute('status', 'failed');
+                $result->setAttribute('reason', 'not-strong-enough');
+
+                return FMM::RESULT_NOT_STRONG_ENOUGH;
+            }
+
 			// Delete recovery code:
 			$password_data['recovery_code'] = null;
-			
+
 			$entry->setData($password_field->get('id'), $password_data);
 			$entry->commit();
 			
@@ -831,7 +849,7 @@
 			$this->setMember($entry);
 			$field = $this->getMemberField(FMM::FIELD_MEMBERSTATUS);
 			$data = $entry->getData($field->get('id'));
-			$status = @current($data['value']);
+			$status = is_array($data['value']) ? current($data['value']) : $data['value'];
 			
 			// The member is banned:
 			if ($status == FMM::STATUS_BANNED) {
