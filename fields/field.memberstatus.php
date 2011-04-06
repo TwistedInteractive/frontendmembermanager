@@ -153,7 +153,7 @@
 				
 				return self::__INVALID_FIELDS__;
 			}
-			
+
 			return parent::checkPostFieldData($data, $message, $entry_id);
 		}
 		
@@ -173,9 +173,9 @@
 					f.date DESC
 				LIMIT 4
 			");
-			
-			if (empty($current)) $data = FMM::STATUS_ACTIVE;
-			
+
+            if($data == null) { $data = FMM::STATUS_PENDING; }
+
 			$values = array(
 				'value'		=> array($data),
 				'date'		=> array(DateTimeObj::get('Y-m-d H:i:s'))
